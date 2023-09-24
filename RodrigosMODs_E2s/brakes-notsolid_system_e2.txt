@@ -1,0 +1,76 @@
+@name Brakes-NotSolid system E2
+@inputs Brake NotSolid Base:entity 
+@outputs 
+@persist Base:entity Material:string
+@trigger Brake NotSolid
+
+  # Hello! welcome to the manual handbrakes/embrakes and not solid system E2! This E2 chip was made by RodrigosMOD and with the help of NIl
+  
+  # Basically, this e2 sets the entire consist's physical material to another one that you have selected on below, so you can stop in seconds without derailing and with any type of length
+  
+  # This E2 also includes another module, NotSolid system, if you wire it to a toggleable button or numpad keyinput, makes the entire consist not solid and freezes it, this is useful if someone is going to derail you or crash into you
+  # Turn on the NotSolid system and boom" Trains can pass through you, also stops you instantly if needed. 
+
+  # Both systems works with any kind of consist since it detects every constrained entity from the Baseplate (Base) and applies the material or the not solid on everything
+
+  # Inputs are self explanatory, Base:entity to the baseplate or train model base, Superice to a pod controller input (for example: Space) and NotSolid to a toggleable button or Keyinput
+
+  # I'll probably add more features on this, but no ideas for now, also i want to make this E2 most optimized possible. Have fun 
+ 
+  #Here you can change how the brakes and supericer behaves, here's a link with every physical material that exists on source engine:
+  # https://developer.valvesoftware.com/wiki/Material_surface_properties
+
+   #Material:
+   BrakeMaterial = "canister" #Here goes the brake material
+   Supericer = "gmod_ice" #And here goes the material that removes the friction of the train (you can use gmod_ice or friction_00 too)
+
+   #Sounds:
+   BrakeEngage = "ep2_outland_11.leverdoor_open" #Sounds that plays when you press the brake input
+   BrakeRelease = "d3_breen.digger_stop1" #Sound that plays after releasing that brake input (also this one is used for the not solid system when enables and disables)
+
+   
+   ############################################################
+
+
+   Base:isConstrainedTo()
+   Ents = Base:getConstraints()
+
+    ################### FUNCTION MODULES ###################
+    function void smbrake(Material:string) {
+        Base:propPhysicalMaterial(Material)
+        for(N=1,Ents:count()){
+            Ents[N,entity]:propPhysicalMaterial(Material)
+        }
+    }
+   
+    function void hardbrake() {
+        Base:propPhysicalMaterial("metal")
+        for(N=1,Ents:count()){
+            Ents[N,entity]:propPhysicalMaterial("metal")
+        }
+    }
+
+    function void notsolid(Num) { 
+        Base:propNotSolid(Num) 
+        for(N=1,Ents:count()){ 
+        Ents[N,entity]:propNotSolid(Num) 
+        Ents[N,entity]:propFreeze(Num) } 
+    } 
+
+    ################### FUNCTIONS, COMMANDS and stuff ###################
+    
+    if(Brake==1){
+     smbrake(BrakeMaterial) 
+     Base:soundPlay(2,0,BrakeEngage)
+
+    }else{
+     smbrake(Supericer)
+     Base:soundPlay(2,3,BrakeRelease)     
+   
+   }
+
+    if(NotSolid==1){
+     notsolid(1)
+    }else{
+     notsolid(0)
+}

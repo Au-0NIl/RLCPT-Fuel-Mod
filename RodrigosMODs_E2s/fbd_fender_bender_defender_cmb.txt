@@ -1,0 +1,711 @@
+@name FBD Fender Bender Defender CMB
+@inputs Enable Active MPH Unfreeze Base:entity
+@outputs EmBrake CycleTime TruckCount Running Analyzing RTD_Counter Enable_True PCS_Open
+@persist Trucks:array TruckTypes:array W:entity O:entity AUTOPARENT SpeedThreshold Index RTD FreezeOnDerail Running Initialized Interval Derail MarkerColor:vector
+@persist TruckModels:array SpeedQ Paths:table Analyzing TC Consist:array AI LazyMode Disabled
+@persist [R1E R1P R1A]:array [R2E R2P R2A]:array [R3E R3P R3A]:array [R4E R4P R4A]:array [R5E R5P R5A]:array [R6E R6P R6A]:array [R7E R7P R7A]:array [R8E R8P R8A]:array [R9E R9P R9A]:array [R10E R10P R10A]:array RTD_Counter RTD_Interval 
+@trigger Enable Active
+@model models/Items/combine_rifle_ammo01.mdl
+if(first()|duped()){
+    
+    Base:parent()
+    
+    local Version = "V3 modified by RodrigosMOD"
+    #[
+    
+    Welcome to Magnum's Fender Bender Defender (Also known as FBD)!
+    "Stops accidents dead in their tracks!"
+    Special thanks to Freezebug for Red Tape Defender, which has been integrated into FBD!
+    Requires Grove's Sound Pack and propcore.
+    
+    Setup instructions:
+    1- Place the chip on the locomotive carbody somewhere, and configure the settings.
+    2- Wire "Enable" to the locomotive's MU Master button (or to an independent toggled button).
+    3- Wire "Active" to the pod controller's "Active" output, for the driver's seat.
+    4- Wire "MPH" to the MPH output on the RLC Chip.
+    5- You may also wish to wire RLC Pt's "EmBrake" input to the FBD chip, though this is Optional.
+    
+    
+    Note:
+    You /Can/ Parent the chip, but only to the baseplate/carbody.
+    
+    New Improvements include the elimination of the tick quota problem, the ability to add any truck model to the registered list, and
+    the elimination of that pesky problem with diamonds.
+    
+    How the chip works:
+    The Enable input turns derail protection on and off.
+    The Active input for the pod controller updates the truck registry every time you hop in the seat. Just get in and out as normal.
+    (This also happens when you accelerate past a certain speed, see below).
+    The chip selects one truck in the consist every execution and checks if it's on the rails or not. Longer trains make the chip check slower! 10 cars = 1 second.
+    If you derail, the train will notify you. Optionally (Recommended!) the chip will also freeze the train or even automatically rerail it for you!
+    
+    Another Note by RodrigosMOD:
+    helooo!!! this version of FBD has some new features, up to 10 different .rerail positions and an unfreeze command so you don't need to get out of the engine while running
+    
+    List of commands:
+    
+    .r (number). For example .r1, .r2, .r3, .r4 until you reach .r10 which is the last rerail command (i switched from .rerail to .r so its faster for rerailing and can prevent some accidents)
+    .u (unfreeze). This command just unfreeze the entire consist, nothing special
+    
+    Listo of customization in the e2:
+    
+    in Line: 361, 362, 366, 367 you can find some 27 and -27 values, that's the track gauge. 27 is for RSG and 38 is for PHX
+    in Line: 383, between the "" in the () you can add a sound when you derail
+    in Line: 360, there's a 1.7 value on the right, i use 1.7 so FBD doesn't triggers a lot of false derailments, but sometimes the axles can be off and FBD doesn't triggers, default value is 1
+    And lastly, if you have bogie mismatch errors or the fbd doesn't detects a bogie, in line 78, add the model of the bogie / axle to that list.
+    
+    this is the end, with this e2 you can live, love and lie
+    Goodbye and enjoy.
+    
+    ]#
+    
+    RTD = 1   #Enables Red Tape Defender (RTD) Recording. At any time, you can type ".rerail" in chat and it will place your entire train back on the rails!
+    FreezeOnDerail = 0  #"Traditional" FBD functionality. When it detects a derailment, it will freeze the entire train.
+    MarkerColor = vec(255,187,0) #Whichever truck triggered FBD will be highlighted with this color.
+    SpeedThreshold = 15   #FBD will re-examine all trucks when you accelerate past this speed.
+    
+    Interval = 50   #Derailment Check Interval, in ms. 50ms means 20 trucks per second (10 cars per second). You should probably leave it at 50.
+    RTD_Interval = 10 #Time in seconds between Red Tape snapshots.
+    
+    #Don't touch these
+    
+    Paths = table()
+    
+    Paths["bogey",string] = "bogey" #Old Magtrains Stuff
+	   Paths["bogie",string] = "bogie" #Bobster's Stuff
+	   Paths["truck",string] = "truck" #Hopefully everything else
+    
+    TruckModels = array(
+    #For adding extra models, that don't fall into one of the categories above. Feel Free to keep this up to date as more and more models get added.
+    
+    "models/bobsters_trains_2/wheels/standard/double_30.mdl",
+    "models/combine_helicopter/helicopter_bomb01.mdl"
+    
+    )
+    signalSetGroup("FBD")
+    runOnSignal("Disable",0,LazyMode)
+    
+    
+    function void getTrucks(Base:entity){ #Truck Identification
+        TC = 0
+        Trucks = array()
+        AI = 1
+        Analyzing = 1
+        Running = 0
+        PCS_Open = 0
+        
+        Consist = Base:getConstraints()
+        timer("analyze",50)
+        return void
+        
+    }
+    
+    function array encode(Trux:array){ #Truck Direction Encoding
+        
+        local Codes = array()
+        for(N=1,Trux:count()){
+            local Prop = Trux[N,entity]
+            local Box = Prop:boxSize()
+            
+            local GrovStyle = Box:x() > Box:y()
+            Codes[N,number] = GrovStyle
+        }
+        return Codes
+    }
+    
+    function void refresh(){
+        Index = 1
+        getTrucks(W)
+        Derail = 0
+        holoDelete(0)  
+        return void
+    }
+    
+    function void freezeAll(){
+        local Constrained = W:getConstraints()
+        W:propFreeze(1)
+        for(N=1,Constrained:count()){
+            Constrained[N,entity]:propFreeze(1)
+        }
+        }
+        
+    function void unfreezeAll(){
+        local Constrained = W:getConstraints()
+        W:propFreeze(0)
+        for(N=1,Constrained:count()){
+            Constrained[N,entity]:propFreeze(0)
+        }
+        
+        
+        return void
+    }
+    
+    #SECTION TO ADD MORE POSITION SAVES (to be able to do .rerail to infinity lol111) pd: adding more positions could make the e2 more laggy and OPS increases)
+    
+    function void rtd_save(){
+        
+        #RE = RE:clone()
+        #RP = RP:clone()
+        #RA = RA:clone()
+               
+        R10E = R9E:clone()
+        R10P = R9P:clone()
+        R10A = R9A:clone()
+        
+        R9E = R8E:clone()
+        R9P = R8P:clone()
+        R9A = R8A:clone()
+        
+        R8E = R7E:clone()
+        R8P = R7P:clone()
+        R8A = R7A:clone()
+        
+        R7E = R6E:clone()
+        R7P = R6P:clone()
+        R7A = R6A:clone()
+        
+        R6E = R5E:clone()
+        R6P = R5P:clone()
+        R6A = R5A:clone()
+        
+        R5E = R4E:clone()
+        R5P = R4P:clone()
+        R5A = R4A:clone()
+               
+        R4E = R3E:clone()
+        R4P = R3P:clone()
+        R4A = R3A:clone()
+        
+        R3E = R2E:clone()
+        R3P = R2P:clone()
+        R3A = R2A:clone()
+               
+        R2E = R1E:clone()
+        R2P = R1P:clone()
+        R2A = R1A:clone()
+        
+        R1E = array()
+        R1E = array(W):add(W:getConstraints())
+        R1P = array()
+        R1A = array()
+        for(N=1,R1E:count()){
+            local Ent = R1E[N,entity]
+            R1P[N,vector] = Ent:pos()
+            R1A[N,angle] = Ent:angles()
+        }
+        #print("Saving")
+        
+    }
+    
+    
+    local E = entity()
+    O = owner()
+    runOnChat(1)
+    Index = 1
+    Running = 0
+    Derail = 0
+    Analyzing = 0
+    AI = 1
+    
+    R1E = array()
+    R1P = array()
+    R1A = array()
+    
+    Initialized = 0
+    SpeedQ = 0
+    
+    Disabled = 0
+    
+    if(first()){
+        print("[FBD] Welcome to Magnum's Fender Bender Defender!\nPlease read the instructions before proceeding.")
+        if(AUTOPARENT){
+            #E:setMaterial("models/effects/vol_light001")
+            local Welded = E:isWeldedTo()
+            if(Welded:isValidPhysics()){
+                E:parentTo(Welded)
+                W = Welded
+                #ifdef entity:constraintBreak(entity)
+                    E:constraintBreak(Welded)
+                #endif
+                    
+            }else{
+                print("[FBD] Please attach to the carbody/baseplate of the locomotive!")
+                exit()
+            }
+    
+        }else{
+            W = E:isWeldedTo()
+            if(!W:isValidPhysics()){
+                print("[FBD] Please attach to the carbody/baseplate of the locomotive!")
+                exit()
+            }
+        }
+        if(LazyMode){
+            findIncludePlayerProps(O)
+            findInSphere(E:pos(),256)
+            findSortByDistance(E:pos())
+            local FR = findToArray()
+            local PC = noentity()
+            local RLCPT = noentity()
+            for(LN=1,FR:count()){
+                local V = FR[LN,entity]
+                local Class = V:type()
+                if(Class=="gmod_wire_pod"){
+                    PC = V
+                }elseif(Class=="gmod_wire_expression2"){
+                    local Wirelink = V:wirelink()
+                    if(Wirelink["RLCPT",entity]){
+                        RLCPT = V
+                    }
+                }
+            }
+            if(PC){
+                print("[FBD] Pod Controller Found: " + PC:id())
+            }else{
+                print("[FBD] ERROR! Could not find Pod Controller!")
+            }
+            if(RLCPT){
+                print("[FBD] RLC PT found: " + RLCPT:id())
+            }else{
+                print("[FBD] ERROR! Could not find RLC PT Chip!")
+            }
+            if(PC & RLCPT){
+                E:createWire(RLCPT,"Enable","On",0,vec(),"cable/cable2")
+                E:createWire(RLCPT,"MPH","MPH",0,vec(),"cable/cable2")
+                E:createWire(PC,"Active","Active",0,vec(),"cable/cable2")
+                RLCPT:createWire(E,"EmBrake","EmBrake",0,vec(),"cable/cable2")
+            }
+            
+        }
+    }
+    if(!FreezeOnDerail & !RTD){
+        print("[FBD] WARNING! You have disabled Both FreezeOnDerail and Red Tape Defender!\nFBD May be ineffective at preventing accidents!")
+    }
+    setName("FBD Fender Bender Defender " + Version)
+    
+    
+}elseif(dupefinished()){
+    local E = entity()
+    if(E:parent():isValidPhysics()){
+        W = E:parent()
+    }elseif(E:isWeldedTo():isValidPhysics()){
+        W = E:isWeldedTo()
+    }else{
+        print("[FBD] Please attach to the carbody/baseplate of the locomotive!")
+        exit()
+    }
+    if(LazyMode){
+        findIncludePlayerProps(O)
+        findInSphere(E:pos(),128)
+        local FR = findToArray()
+        local PC = noentity()
+        local RLCPT = noentity()
+        foreach(K,V:entity=FR){
+            local Class = V:type()
+            if(Class=="gmod_wire_pod"){
+                PC = V
+            }elseif(Class=="gmod_wire_expression2"){
+                local Name = V:getName()
+                if(Name:find("RLC Platinum")){
+                    RLCPT = V
+                }
+            }
+        }
+        if(!PC){
+            print("[FBD] ERROR! Could not find Pod Controller!")
+        }
+        if(!RLCPT){
+            print("[FBD] ERROR! Could not find RLC PT Chip!")
+        }
+        if(PC & RLCPT){
+            E:createWire(RLCPT,"Enable","On",0,vec(),"cable/cable2")
+            E:createWire(RLCPT,"MPH","MPH",0,vec(),"cable/cable2")
+            E:createWire(PC,"Active","Active",0,vec(),"cable/cable2")
+            RLCPT:createWire(E,"EmBrake","EmBrake",0,vec(),"cable/cable2")
+        }
+        
+    }
+}
+
+if(signalClk()){
+    Disabled = 1
+    #print("Chip Disabled!")
+}elseif(Enable & Active & ~Active){
+    Disabled = 0
+}
+
+Enable_True = Enable & !Disabled
+
+
+if(Enable_True){
+    if(Active & ~Active){
+        Initialized = 1
+        #print("Chip Disabling!")
+        refresh()
+        if(LazyMode){
+            signalSend("Disable",0)
+        }
+        
+        if(RTD){
+            rtd_save()
+            
+        }
+        
+    }elseif(clk("runtick") & Running & !Analyzing){
+        
+        #The part that actually checks for derailments!
+        local Specimen = Trucks[Index,entity]
+        if(Specimen:isValidPhysics()){
+            #Y Longer: Mag Style (0), X Longer: Grove Style (1)
+            local Type = TruckTypes[Index,number]
+            local LoPoint = Specimen:boxMin()*(Type ? vec(1,0,1) : vec(0,1,1)) 
+            if(Type){
+                #GSG
+                Corner1 = LoPoint + vec(0,-27,1)
+                Corner2 = LoPoint*vec(-1,0,1) + vec(0,27,1)
+                Dir = Specimen:forward() + Specimen:right()
+            }else{
+                #Mag
+                Corner1 = LoPoint + vec(27,0,1)
+                Corner2 = LoPoint*vec(-1,0,1) + vec(-27,0,1)
+                Dir = Specimen:forward() - Specimen:right()
+            }
+            rangerFilter(Specimen)
+            local R1 = rangerOffset(18,Specimen:toWorld(Corner1),Dir)
+            local R2 = rangerOffset(18,Specimen:toWorld(Corner2),-Dir)
+            
+            Derail = !(R1:hit() & R2:hit())
+            
+            if(Derail){ #Derailment Found!
+                Running = 0
+                
+                EmBrake = 1
+                PCS_Open = 1
+                print("[FBD] Derailment Detected at " + toString(round(MPH,1)) + " MPH!")
+                O:soundPlay(0,5,"")
+                holoCreate(0,Specimen:pos(),vec(1.125),Specimen:angles(),MarkerColor,Specimen:model())
+                holoParent(0,Specimen)
+                holoAlpha(0,100)
+                holoMaterial(0,"debug/debugdrawflat")
+                stopAllTimers()
+                timer("fenderbender",3000)
+                
+                if(FreezeOnDerail){
+                    freezeAll()
+                }
+            }else{
+                Index++
+                
+                if(Index >= Trucks:count()){
+                    Index = 1
+                    
+                }
+                if(RTD){
+                    RTD_Counter++
+                        local SampleTime = clamp(CycleTime,1,5)
+                    if(RTD_Counter>RTD_Interval*20){
+                        rtd_save()
+                        RTD_Counter=0
+                    }
+                }
+                
+                timer("runtick",Interval)
+            }
+            
+        }else{
+            print("[FBD] Truck Mismatch Detected (Index " + Index:toString() + ")! Reloading...")
+            refresh()
+        }
+        
+    }elseif(clk("analyze") & Analyzing){
+        local Prop = Consist[AI,entity]
+        local Model = Prop:model()
+        local IsTruck = 0
+        
+        #Special Cases
+        for(M=1,TruckModels:count()){
+            if(Model == TruckModels[M,string]){
+                IsTruck=1
+                break
+            }
+        }
+        #Nicely Organized ones
+        if(!IsTruck){
+            foreach(K,V:string = Paths){
+                local PathM = V
+                if(Model:find(PathM)){
+                    IsTruck = 1
+                }
+            }
+        }
+        if(IsTruck){
+            TC++
+            Trucks[TC,entity] = Prop
+        }
+        AI++
+        if(AI>Consist:count()){
+            Initialized = 1
+            Analyzing = 0
+            TruckTypes = encode(Trucks)
+            Running = 1
+            TruckCount = Trucks:count()
+            CycleTime = ((Interval*TruckCount)/1000)
+            
+            timer("runtick",Interval)
+            timer("speedtest",1000)
+        }else{
+            timer("analyze",50)
+        }
+    }elseif(clk("speedtest")){
+        if((MPH > SpeedThreshold) & !SpeedQ & !LazyMode){
+            SpeedQ = 1
+            refresh()
+        }elseif((MPH < (SpeedThreshold - 5)) & SpeedQ){
+            SpeedQ = 0
+        }
+        timer("speedtest",1000)
+    }elseif(clk("fenderbender")){
+        O:soundPlay(1,3,"")
+        EmBrake = 0
+    }elseif(chatClk(O)){
+        LS = O:lastSaid()
+        if(LS==".refresh"){
+            Initialized = 1
+        
+            refresh()
+            timer("runtick",Interval)
+            timer("speedtest",1000)
+            
+            if(RTD){
+                rtd_save()
+                
+            print("[FBD] Initializing, Refreshing, and Running.")
+            hideChat(1)
+            }
+            
+    }elseif(LS==".u") {
+            hideChat(1)
+            if(RTD){
+                unfreezeAll()
+                for(N=1,R1E:count()){
+                    local Ent = R1E[N,entity]
+                    if(Ent:isValidPhysics()){
+            }
+         }
+         O:soundPlay(0,4,"Buttons.snd28")
+         print("[FBD] Train has been unfreezed.")
+         hideChat(1)
+        
+            }
+                 
+            #SECTION FOR .RERAIL (.r) COMMANDS #######################################################################################
+            
+        }elseif(LS==".r"){
+            hideChat(1)
+            if(RTD){
+                freezeAll()
+                for(N=1,R1E:count()){
+                    local Ent = R1E[N,entity]
+                    if(Ent:isValidPhysics()){
+                        
+                        Ent:setPos(R1P[N,vector])
+                        Ent:setAng(R1A[N,angle])
+                    }
+                }
+                O:soundPlay(0,4,"Buttons.snd18")
+            }else{
+                print("[FBD] RTD is not enabled!")
+            }
+            
+            #######################################################################################
+            
+        }elseif(LS==".r2"){
+            hideChat(1)
+            if(RTD){
+                freezeAll()
+                for(N=1,R2E:count()){
+                    local Ent = R2E[N,entity]
+                    if(Ent:isValidPhysics()){
+                        
+                        Ent:setPos(R2P[N,vector])
+                        Ent:setAng(R2A[N,angle])
+                    }
+                }
+                O:soundPlay(0,4,"Buttons.snd18")
+            }else{
+                print("[FBD] RTD is not enabled!")
+            }
+            
+            #######################################################################################         
+              
+        }elseif(LS==".r3") {
+            hideChat(1)
+            if(RTD){
+                freezeAll()
+                for(N=1,R3E:count()){
+                    local Ent = R3E[N,entity]
+                    if(Ent:isValidPhysics()){
+                        
+                        Ent:setPos(R3P[N,vector])
+                        Ent:setAng(R3A[N,angle])
+                    }
+                }
+                O:soundPlay(0,4,"Buttons.snd18")
+            }else{
+                print("[FBD] RTD is not enabled!")
+            }
+            
+            #######################################################################################    
+                     
+        }elseif(LS==".r4") {
+            hideChat(1)
+            if(RTD){
+                freezeAll()
+                for(N=1,R4E:count()){
+                    local Ent = R4E[N,entity]
+                    if(Ent:isValidPhysics()){
+                        
+                        Ent:setPos(R4P[N,vector])
+                        Ent:setAng(R4A[N,angle])
+                    }
+                }
+                O:soundPlay(0,4,"Buttons.snd18")
+            }else{
+                print("[FBD] RTD is not enabled!")
+            }     
+                    
+            #######################################################################################
+            
+        }elseif(LS==".r5") {
+            hideChat(1)
+            if(RTD){
+                freezeAll()
+                for(N=1,R5E:count()){
+                    local Ent = R5E[N,entity]
+                    if(Ent:isValidPhysics()){
+                        
+                        Ent:setPos(R5P[N,vector])
+                        Ent:setAng(R5A[N,angle])
+                    }
+                }
+                O:soundPlay(0,4,"Buttons.snd18")
+            }else{
+                print("[FBD] RTD is not enabled!")
+                         
+           }  
+           #######################################################################################
+        
+        }elseif(LS==".r6") {
+            hideChat(1)
+            if(RTD){
+                freezeAll()
+                for(N=1,R5E:count()){
+                    local Ent = R6E[N,entity]
+                    if(Ent:isValidPhysics()){
+                        
+                        Ent:setPos(R6P[N,vector])
+                        Ent:setAng(R6A[N,angle])
+                    }
+                }
+                O:soundPlay(0,4,"Buttons.snd18")
+            }else{
+                print("[FBD] RTD is not enabled!")
+                         
+           }  
+        #######################################################################################
+        
+        }elseif(LS==".r7") {
+            hideChat(1)
+            if(RTD){
+                freezeAll()
+                for(N=1,R7E:count()){
+                    local Ent = R7E[N,entity]
+                    if(Ent:isValidPhysics()){
+                        
+                        Ent:setPos(R7P[N,vector])
+                        Ent:setAng(R7A[N,angle])
+                    }
+                }
+                O:soundPlay(0,4,"Buttons.snd18")
+            }else{
+                print("[FBD] RTD is not enabled!")
+                         
+           }   
+        #######################################################################################
+        
+                }elseif(LS==".r8") {
+            hideChat(1)
+            if(RTD){
+                freezeAll()
+                for(N=1,R8E:count()){
+                    local Ent = R8E[N,entity]
+                    if(Ent:isValidPhysics()){
+                        
+                        Ent:setPos(R8P[N,vector])
+                        Ent:setAng(R8A[N,angle])
+                    }
+                }
+                O:soundPlay(0,4,"Buttons.snd18")
+            }else{
+                print("[FBD] RTD is not enabled!")
+                         
+           }
+        #######################################################################################
+        
+                }elseif(LS==".r9") {
+            hideChat(1)
+            if(RTD){
+                freezeAll()
+                for(N=1,R9E:count()){
+                    local Ent = R9E[N,entity]
+                    if(Ent:isValidPhysics()){
+                        
+                        Ent:setPos(R9P[N,vector])
+                        Ent:setAng(R9A[N,angle])
+                    }
+                }
+                O:soundPlay(0,4,"Buttons.snd18")
+            }else{
+                print("[FBD] RTD is not enabled!")
+                         
+           }
+        #######################################################################################
+        
+                }elseif(LS==".r10") {
+            hideChat(1)
+        if(RTD){
+            freezeAll()
+        for(N=1,R10E:count()){
+        local Ent = R10E[N,entity]
+        if(Ent:isValidPhysics()){
+            Ent:setPos(R10P[N,vector])
+            Ent:setAng(R10A[N,angle])
+            }
+        }
+            O:soundPlay(0,4,"Buttons.snd18")
+            }else{
+            print("[FBD] RTD is not enabled!")
+                          
+        }
+        
+        #######################################################################################
+        
+        #######################################################################################
+        
+        #######################################################################################
+        
+        #######################################################################################
+        
+        #######################################################################################
+        
+        #######################################################################################
+        }
+        
+    }
+    
+}elseif(Initialized){
+    Initialized = 0
+    Running = 0
+    stopAllTimers()
+}
+
