@@ -1,0 +1,283 @@
+@name Fuel Pump
+@inputs DoNotWireFuelLevel [DoNotWireIn]:array
+@outputs [DoNotWireOut]:array
+@persist [O E]:entity A Gal Interval
+@persist PressedE PressedR DQ Pump PQ PrevFuelLvl FuelLvl
+@persist BeingLinked Unlink Linked [FL FH]:entity 
+@persist GallonsPerSecond CurName:array NameQ Version:string
+@trigger 
+@model models/props_wasteland/gaspump001a.mdl
+
+#this works like a monks plug e2 and its mostly (Not really more like took inspiration from) code from monks plug e2 but you need to press e on the fuel pump and not the fuel e2
+
+if(first()|dupefinished()){
+    Version = "0.1.1"
+    
+    #[
+
+    ===============================================
+    Hi And Welcome to NIls Semi Realistic FuelPump!
+    ===============================================
+    Description:
+    Hi And welcome! this works like a monks plug e2 and its 
+    mostly (Not really more like took inspiration from and took a few functions here and there) code 
+    from monks plug e2 but you need to press e on the fuel pump and not the fuel e2
+    
+    also if you are wondering why its not in your hands and floating when you pressed e on it its because its just a visual glitch and is actually in your hands so dont worry about it!
+    
+    =====================================================================================================================================================================================
+    Fixed:
+    displaying gallons and total incorrectly when theres 2 fuel tanks connected to the main and second inlet
+    
+    Bugs:
+    
+    =====================================================================================================================================================================================
+    
+    # Setup:
+    None! yay!
+    
+    # Hooked up? if you are, press E on the Fuel Pump e2 to pump fuel to the fuel tank!
+     
+    ]#
+    
+    O = owner()
+    E = entity()
+    
+    GallonsPerSecond = 4  # how much gallons per second does the Pump give to the tank?
+                            # i found a market website for this http://www.paragonproducts.net/products/locomotive_fuel_transfer_aftermarket_pumps.html and based it off of that
+                            # its usually 0.035(8.1 GPM) - 0.25(15 GPM) and i think thats too low
+                            # and i dont know if that is for the engine or for the fuel tank! so im just gonna set this to 1.1 (GPS) which is 66 gallons per minute (GPM)
+                            # and i talked to 2 ais and they said it ranges from i guess 8.1GPM to 300GPM and i dont know if anything above 100GPM is true lol
+    
+    #===============================================DO NOT CHANGE ANYTHING BELOW THIS LINE===============================================#
+    
+    #CurName = array("Fuel Pump","Gallons: 0")
+    
+    function addName(Field,String:string){
+        if(Field >= 0){ CurName[Field,string] = String }
+    }
+    
+    function setArrayName(Array:array){
+        local NameString = ""
+        foreach(K,V:string=Array){
+            NameString += V
+            if(K!=Array:count()){ NameString += "\n" }
+        }
+        setName(NameString)
+    }
+    
+    A = 1
+    holoCreate(A)
+    holoPos(A,E:toWorld(vec(0,-15,45.5)))
+    holoAng(A,E:toWorld(ang(0,90,0)))
+    holoModel(A,"models/props_equipment/gas_pump_p13.mdl")
+    holoAlpha(A,0)
+    holoParent(A,E)
+    
+    function createProp(Vec:vector,Ang:angle,Ent:entity){
+        FH=propSpawn("models/props_equipment/gas_pump_p13.mdl",Vec,Ang,1)
+        FH:propNotSolid(1)
+        if(Ent:isValid()){
+            FH:parentTo(Ent)
+        }
+    }
+    
+    createProp(E:toWorld(vec(0,-15,45.5)),E:toWorld(ang(0,90,0)),E)
+    
+    rope(1,E,vec(0,-17.8,56),FH,vec(-6,0,-9.5),160,2,"cable/cable",0)
+    
+    function clearLink() {
+        FL = noentity()
+        
+        E:deleteWire("DoNotWireFuelLevel")
+        E:deleteWire("DoNotWireIn")
+        
+        local R = ioOutputEntities("DoNotWireOut")
+        
+        for(N=1, R:count()){
+            R[N,entity]:deleteWire("DoNotWireIn")
+            
+            if(R[N,entity]:type() == "gmod_wire_plug"){
+                R[N,entity]:deleteWire("In")
+            }
+        }
+        
+    }
+    
+    #DoNotWireOut["FP_Version",string] = Version
+    
+    runOnLast(1)
+}
+
+if((O:weapon():type()=="weapon_crowbar") & !(O:inVehicle())) {
+    Interval = 70
+    
+    interval(Interval)
+    
+    if(changed(O:keyPressed("E")) & O:keyPressed("E")){PressedE = 1}else{PressedE = 0}
+    
+    if(changed(O:keyPressed("R")) & O:keyPressed("R")){PressedR = 1}else{PressedR = 0}
+    
+    local IsLookingAt = owner():eyeTrace():entity()
+    
+    if(PressedE & IsLookingAt == E & !BeingLinked & !Linked){
+        BeingLinked = 1
+        FH:propDelete()
+        createProp(O:attachmentPos("anim_attachment_RH")+vec(0,5,10),O:attachmentAng("anim_attachment_RH")+ang(60,90,0),O)
+        FH:propDraw(0)
+        rope(1,E,vec(0,-17.8,56),FH,vec(-6,0,-9.5),160,2,"cable/cable",0)
+        holoPos(1,O:attachmentPos("anim_attachment_RH")+vec(0,5,10))
+        holoAng(1,O:attachmentAng("anim_attachment_RH")+ang(60,90,0))
+        holoAlpha(1,255)
+        holoParent(1,O)
+        hint("Now Select a Fuel E2 or Fuel Inlet To Link them",2000)
+    }
+    
+    if(PressedE & BeingLinked & !Linked & IsLookingAt != E){
+        FL = IsLookingAt
+        IsLookingAt:createWire(E,"DoNotWireIn","DoNotWireOut")
+        E:createWire(IsLookingAt,"DoNotWireIn","VerifyL")
+        E:createWire(IsLookingAt,"DoNotWireFuelLevel","FuelLevel")
+    }
+    
+    if(PressedE & Linked & IsLookingAt == E & !Pump){
+        Pump = 1
+        PQ = 1
+        timer("resetpump",100)
+        hint("Pump On!",200)
+    }
+    
+    if(clk("resetpump")){
+        PQ = 0
+    }
+    
+    if(PressedE & Linked & IsLookingAt == E & Pump & PQ == 0){
+        Pump = 0
+        hint("Pump Off!",200)
+    }
+    
+    if(PressedR & BeingLinked & !Linked){
+        BeingLinked = 0
+        Linked = 0
+        FH:propDelete()
+        createProp(E:toWorld(vec(0,-15,45.5)),E:toWorld(ang(0,90,0)),E)
+        rope(1,E,vec(0,-17.8,56),FH,vec(-6,0,-9.5),160,2,"cable/cable",0)
+        holoPos(1,E:toWorld(vec(0,-15,45.5)))
+        holoAng(1,E:toWorld(ang(0,90,0)))
+        holoAlpha(1,0)
+        holoParent(1,E)
+        hint("Linking Cancelled", 3000)
+    }
+    
+    if(PressedR & Linked & (IsLookingAt == FL | IsLookingAt == E)){
+        BeingLinked = 0
+        Linked = 0
+        
+        for(I = 0,FL:getMaterials():count()){
+            if(FL:getMaterials()[I,string] == "models/proppertextures/acrylic_red"){
+                FL:setSubMaterial(I,"models/proppertextures/acrylic_red")
+            }
+            if(FL:getMaterials()[I,string] == "models/linnie/fuelcap"){
+                FL:setSubMaterial(I,"models/linnie/fuelcap")
+            }
+        }
+        
+        clearLink()
+        
+        Pump = 0
+        Gal = 0
+        PrevFuelLvl = 0
+        
+        #CurName = array("Fuel Pump")
+        
+        #addName(0,"Fuel Pump")
+        
+        #setArrayName(CurName)
+        
+        timer("AH",1000)
+        
+        FH:propDelete()
+        createProp(E:toWorld(vec(0,-15,45.5)),E:toWorld(ang(0,90,0)),E)
+        rope(1,E,vec(0,-17.8,56),FH,vec(-6,0,-9.5),160,2,"cable/cable",0)
+        holoPos(1,E:toWorld(vec(0,-15,45.5)))
+        holoAng(1,E:toWorld(ang(0,90,0)))
+        holoAlpha(1,0)
+        holoParent(1,E)
+        
+        hint("Unlinked from Fuel Inlet", 3000)
+    }
+    
+    if(DoNotWireIn[1,string] == "Fuel Tank" & BeingLinked & !Linked){
+        BeingLinked = 0
+        Linked = 1
+        FH:propDelete()
+        holoPos(1,FL:toWorld(vec(-20,0,-3.9)))
+        holoAng(1,FL:toWorld(ang(40,0,0)))
+        rope(1,E,vec(0,-17.8,56),FL,vec(-30.5,0,-7.4),110,2,"cable/cable",0)
+        holoParent(1,FL)
+
+        for(I = 0,FL:getMaterials():count()){
+            if(FL:getMaterials()[I,string] == "models/proppertextures/acrylic_red"){
+                FL:setSubMaterial(I,"sprites/grip")
+            }
+            if(FL:getMaterials()[I,string] == "models/linnie/fuelcap"){
+                FL:setSubMaterial(I,"sprites/grip")
+            }
+        }
+        
+        hint("Fuel Pump connected. Press E on the Fuel Pump to Pump fuel to the tank!", 3000)
+    }
+}else{
+    Interval = 300
+    
+    interval(300)
+}
+
+if(clk("AH")){
+    CurName = array("Fuel Pump")
+    setArrayName(CurName)
+}
+
+if(clk("ResetNameQ")){
+    NameQ = 0
+}
+
+if(->DoNotWireOut){
+    if(Pump){
+        if(!NameQ){
+            NameQ = 1
+            addName(0,"Fuel Pump")
+            addName(1,"Gallons: " + Gal)
+            addName(2,"Total: "+round(Gal*3.882,2)+"$")
+            
+            setArrayName(CurName)
+            timer("ResetNameQ",1000)
+        }
+        DoNotWireOut = array(GallonsPerSecond*100)
+    }else{
+        DoNotWireOut = array()
+    } 
+    
+    #FuelLvl = DoNotWireFuelLevel
+    #if(PrevFuelLvl != 0){Gal += FuelLvl - PrevFuelLvl}
+    
+    #print(DoNotWireIn[2,number])
+    
+    Gal = DoNotWireIn[2,number] ? DoNotWireIn[4,number] : DoNotWireIn[3,number]
+    
+    PrevFuelLvl = DoNotWireFuelLevel
+}
+
+if(last()){
+    for(I = 0,FL:getMaterials():count()){
+        if(FL:getMaterials()[I,string] == "models/proppertextures/acrylic_red"){
+            FL:setSubMaterial(I,"models/proppertextures/acrylic_red")
+        }
+        if(FL:getMaterials()[I,string] == "models/linnie/fuelcap"){
+            FL:setSubMaterial(I,"models/linnie/fuelcap")
+        }
+    }
+    
+    clearLink()
+    FH:propDelete()
+}

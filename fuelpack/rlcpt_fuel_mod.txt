@@ -1,0 +1,1017 @@
+@name RLCPT Fuel Mod
+@inputs [RLCPT]:entity Number:string CtlTableCtrlStand:table Start1B Start2B Shutdown1B Shutdown2B [FuelLineIn]:table [DoNotWireIn]:array IdleOverride
+@outputs FuelLevel FuelPercentage CtlTable:table Start1 Shutdown1 Start2 Shutdown2 [VerifyL]:array [FuelLineOut]:table DrivenMiles DrivenKilometers RPM1 RPM2
+@persist CurName:array SQ1 SQ2 VQ G1 G2 Loaded
+@persist [TransitionPath Startup_Hi Startup_Lo]:string [EngineBehavior]:array Startup_Mode Start1 Shutdown IdleOverride
+@persist SetThrottle SetDynamics On1 On2
+@persist FCR FuelCapacity Gallons FuelLine Refuel FuelPercentage FuelEfficiencyFactor LN
+@persist MaxRPM MinRPM IdleRPM RPM1 InitRPM1 RPM2 InitRPM2
+@persist LowIdleActual1 LowIdleWaiting1 LowIdleTarget1 LowIdleCondition2 LowIdleWaiting2 LowIdling2
+@persist EIIS_Enabled [EIIS_HigherIdle EIIS_HighToHigher EIIS_LowToHigher EIIS_HigherToHigh EIIS_HigherToLow EIIS_HigherTo2 EIIS_2ToHigher EIIS_Shutdown_Higher TransitionToLow TransitionToHigh Idle_Low]:string
+@persist Reverser ES1 ES2 EngineSpeed1 EngineSpeed2 EngineNotch1 EngineNotch2 Primed1 PrimerSet1 NumEngineNotches CurNotches:array FuelSaverMode FuelSaverDelay Interrupted1 Interrupted2
+@persist ABlendQ1 ABlendQ2 RevDirection1 RevDirection2 TimeStamp1 TimeStamp2 Dur1 Dur2 ABQ1 TQ1 TQ2 NameQ DPM
+@persist SoundMultiplier Version:string O:entity
+@persist Format:table [CompanyName ReportingNumber]:string Save DrivenMiles DrivenKilometers
+@trigger none
+@model models/parts/flumz/fuelline.mdl
+
+if(duped()|dupefinished()){
+    reset()
+}
+
+if(first()){
+    
+    Version = "1.0.0"
+    
+    #[========================================================|
+    |                                                         |
+    |  /+|===============================================|+\  |
+    | {+ |Hi And Welcome to NIls Semi Realistic? FuelMod!| +} |   
+    |  \+|===============================================|+/  |
+    |                                                         |
+    |=========================================================================================================================|
+    |                                                                                                                         |
+    |    Description:                                                                                                         |
+    |       Hi And welcome! this e2 may not be accurate at all or realistic but please i tried my best!                       |
+    |       It also only works with PT2 Chips!                                                                                |
+    |                                                                                                                         |
+    |       You can have 2 of this fuel e2s on the opposite side of your locos!                                               |
+    |                                                                                                                         |
+    |       if you have any suggestions or feedback contact me at audy4468 on discord or when you see me at lexon!            |
+    |       Does anyone even want this?                                                                                       |                             
+    |                                                                                                                         |
+    |    INFO:                                                                                                                |
+    |       its optimized!                                                                                                    |
+    |       it supports DPM!                                                                                                  |
+    |       fuel consumption is cubed. at FEF 100 it will be squared, at 200 it will be linear.                               |
+    |       at notch 8 will consume more fuel than ever like IDLE: 3GPH, NOTCH 8: 180GPH                                      |
+    |                                                                                                                         |
+    |    Changelog:                                                                                                           |
+    |       None                                                                                                              |
+    |                                                                                                                         |
+    |=========================================================================================================================|
+    |    Version = 1.0.0                                                                                                      |
+    |                                                                                                                         |
+    |    Fixed:                                                                                                               |
+    |       None                                                                                                              |
+    |                                                                                                                         |
+    #=========================================================================================================================#
+        
+    # Setup:
+    **IMPORTANT NOTE!!!**: IF YOU HAVE 2 FUEL CHIPS or INLETS READ (2 Fuel Inlet mode Setup:)
+       1. Wire RLCPT:entity to the RLC, duh.
+       2. On the RLC chip, wire CtlTable:table to here in this chip or the main inlet chip.
+       3. On this chip, wire CtlTableCtrlStand to the CtlTable of your control stand.
+       4. Wire Start1B to your Start button wherever it is. If your loco has Dual Prime Movers, wire Start2B to wherever your start button is!
+       5. Wire Shutdown1B to your Shutdown button wherever it is. If your loco has Dual Prime Movers, wire Shutdown2B to wherever your shutdown button is!
+       6. Wire Shutdown1 on RLC to Shutdown1 in this chip. If you have Shutdown1 on RLC wired to your shutdown button, unwire that and rewire it to the Shutdown1 output of this chip.
+       7. Wire Start1 of RLC Chip to this chip. You don't want to accidentally start the loco when there is no fuel, right?
+       8. If you have 2 inlets, which is 2 e2s of this fuel e2, go to 2 Fuel Inlet mode Setup below.
+    
+    # 2 Fuel Inlet mode Setup:
+       1. Find FuelLine and set it to 1. Only one chip can be set to 1, and the Main Chip needs to be 0! If you can't find it, do CTRL + F and find FuelLine!
+       2. Wire FuelLineIn from the Second inlet to FuelLineOut of Main Chip or Inlet.
+       3. Wire FuelLineIn from the Main Inlet to FuelLineOut of Second Inlet or Chip.
+       4. DO NOT WIRE anything else if you are using this chip as an inlet! Except for FuelLineIn and FuelLineOut!
+       5. And you are done!
+     
+    ]#
+    
+    entity():setSubMaterial(3,"models/proppertextures/acrylic")
+    entity():setColor(vec(102,102,102))
+    
+    #Like in the PTGAMMA chip
+    #What locomotive do you want RLC PT2 Fuel MOD to emulate? Look in "ptgamma/locos/" !
+    #include "ptgamma/locos/generic/mpi_mp54ac"
+    
+    MinRPM = 500 # Minimum RPM of your engine (Only Available to Fuel Savers & or Dual Prime Movers!)
+    IdleRPM = 600 # RPM of your engine when its in idle
+    MaxRPM = 1500 # Maximum RPM of your engine
+    Gallons = 2400 # Starting Gallons of fuel inside your fueltank (When Save is on 1 it will start at the fuels Save Under "Company Name Reporting Number")
+    FuelCapacity = 2400 # Maximum Gallons your fuel tank can hold
+    
+    FuelLine = 0 #Turn the e2 into a fuel line or fuel inlet? which disables rpm and fuel functions and just make it so that you can refuel using this e2?
+    
+    FuelEfficiencyFactor = 0.225 # you should change this if your fuel is overpowered or underpowered to whatever Fuel Consumption Rate you want
+                                
+    # anything above FEF 200 will make it turn in to linear instead of exponential
+    # for locos with 3000-5000HP usually 0.25 is good but youd have to change it yourself to see
+    # example if you have 1500HP and you want Fuel Consumption Rate on idle to be 2.36 gallons per hour change FuelEfficiencyFactor to 0.5
+    # Average idle Fuel Consumption Rate is 3 gallons per hour for the sd70ace idk thats what i searched in the internet for
+    
+    #<><============================================================Saving Feature============================================================><>#
+    #[
+        hey want to save your fuel levels and kilometers driven or miles driven? then setup the things below here!
+        this will save your locos fuel levels and your driven miles whenever you spawn it! it is also saved at >e2shared/fuel/CompanyName.txt
+    ]#
+    
+    Save = 0 # whether to start at fuel levels saved under "Company Name Reporting Number" or just start at Gallons
+    
+    CompanyName = "GO Transit" # will create a file under company name in expression2/e2shared/fuel/CompanyName.txt
+                                     # this is where we will keep and save all the trains and their fuel levels using their reporting numbers!
+                                    
+    ReportingNumber = "000" # Reporting Number of your train this is the Unique ID of your trains under CompanyName
+                             # Will be Overriden when Number:string is Wired!
+    
+    
+    #<><================================================DO NOT CHANGE ANYTHING BELOW THIS LINE================================================><>#
+    runOnLast(1)
+    runOnFile(1)
+    if(!FuelLine) {
+        runOnHTTP(1)
+        httpRequest("https://raw.githubusercontent.com/Au-0NIl/RLCPT-Fuel-Mod/main/version.txt")
+        timer("Timeout",7000)
+    }
+    
+    O = owner()
+    
+    CurName = array("RLCPT Fuel Mod [BETA]","Made By NIl","FuelCapacity","Fuel Per Hour","RPM","Accurate? Maybe? a lil bit nah")
+    VerifyL = array("Fuel Tank",0,0,0)
+    
+    FCR = (DPM ? Horsepower/2 : Horsepower)*(FuelEfficiencyFactor/100)
+    
+    LowIdleActual1 = Startup_Mode
+    LowIdling2 = !Startup_Mode
+    
+    Gallons = Gallons > FuelCapacity ? FuelCapacity : Gallons
+    
+    ReportingNumber = Number ? Number : ReportingNumber
+    
+    LN = max(1,4-ceil(FuelEfficiencyFactor/100))
+    
+    Format = table()
+    
+    function number save(Filename:string,RN:string,Table:table){
+        if(Filename != ""){
+            if(fileCanWrite()){
+                #local Format = table()
+                Format[Filename,table] = Format[Filename,table]:count() ? Format[Filename,table] : table()
+                Format[Filename,table][RN,table] = Format[Filename,table][RN,table]:count() ? Format[Filename,table][RN,table] : table()
+                Format[Filename,table][RN,table] = Table
+                local SaveString = ">e2shared/fuel/" + Filename + ".txt"
+                local FormatString = vonEncode(Format)
+                fileWrite(SaveString, FormatString)
+                return 1
+            }else{
+                return 0
+            }
+        }else{
+            if(fileCanWrite()){
+                #local Format = table()
+                Format[Filename,table] = Format[Filename,table]:count() ? Format[Filename,table] : table()
+                Format[Filename,table][RN,table] = Format[Filename,table][RN,table]:count() ? Format[Filename,table][RN,table] : table()
+                Format[Filename,table][RN,table] = Table
+                print("Error! No Company Name! Saving as Unknown.txt!")
+                local SaveString = ">e2shared/fuel/Unknown.txt"
+                local FormatString = vonEncode(Format)
+                fileWrite(SaveString, FormatString)
+                return 1
+            }else{
+                return 0
+            }
+        }
+    }
+    
+    function load(Filename:string){
+        fileLoad(">e2shared/fuel/" + Filename + ".txt")
+    }
+    
+    function addName(Field,String:string){
+        if(Field >= 0){ CurName[Field,string] = String }
+    }
+    
+    function setArrayName(Array:array){
+        local NameString = ""
+        foreach(K,V:string=Array){
+            NameString += V
+            if(K!=Array:count()){ NameString += "\n" }
+        }
+        setName(NameString)
+    }
+    
+    local G = 0
+    
+    foreach(K,V:number = EngineBehavior){
+        if(V != 3){
+            G++
+            CurNotches[K,number] = G
+        }else{
+            CurNotches[K,number] = G
+        }
+    }
+    
+    NumEngineNotches = G
+    SoundMultiplier = soundDuration("gsgtrainsounds/misc/switch_rotating.wav")/0.645
+    
+    function number sdr(Soundpath:string){
+        DR = floor(soundDuration(Soundpath)*100/SoundMultiplier)*10 - 20
+        return DR
+    }
+    
+    #0 - A/B Notching
+    #1 - Full Sweep
+    #2 - Instant Change
+    #3 - No Change
+    #4 - Override (Full Sweep)
+    
+    function void transitionRPM1(To){
+        if(!On1) {return void}
+        
+        local BType = EngineBehavior[ES1,number]        
+        RevDirection1 = ES1 > To ? -1 : ES1 == To? RevDirection1 : 1
+        
+        switch(BType){
+            case 0,
+                if(!SQ1){
+                    RevDirection1 = 0
+                    Dur1 = 2000
+                    if(RPM1 >= LowIdleActual1 == 0 ? MinRPM : IdleRPM){
+                        RPM1 = LowIdleActual1 == 0 ? MinRPM : IdleRPM
+                        InitRPM1 = LowIdleActual1 == 0 ? MinRPM : IdleRPM
+                        SQ1 = 1
+                    }
+                }else{
+                    if(changed(ES1) & !Interrupted1){
+                        local Snd = TransitionPath+(RevDirection1 == 1 ? "up/" : "down/")+(ES1):toString()+"-"+((ES1+RevDirection1)):toString()+"b.wav"
+                        Dur1 = sdr(Snd)#-sdr(Snd2)
+                    }
+                    
+                    if(Interrupted1){
+                        Interrupted1 = 0
+                    }
+                }
+                
+                local NRPM = LowIdleActual1 == 0 ? MinRPM : round((((MaxRPM-IdleRPM)/NumEngineNotches)*CurNotches[SQ1 ? ES1+RevDirection1 : 0,number])+IdleRPM)
+
+                if(RPM1 != NRPM){
+                    local TInt = (max(floor(Dur1*0.01),1))
+                    RPM1 += (NRPM - InitRPM1) / TInt
+                }
+                
+                break
+            case 1,
+                if(!SQ1){
+                    RevDirection1 = 0
+                    Dur1 = 2000
+                    if(RPM1 >= LowIdleActual1 == 0 ? MinRPM : IdleRPM){
+                        RPM1 = LowIdleActual1 == 0 ? MinRPM : IdleRPM
+                        InitRPM1 = LowIdleActual1 == 0 ? MinRPM : IdleRPM
+                        SQ1 = 1
+                    }
+                }else{
+                    if(changed(ES1) & !Interrupted1){
+                        local Snd = TransitionPath+(RevDirection1 == 1 ? "up/" : "down/")+(ES1):toString()+"-"+((ES1+RevDirection1)):toString()+".wav"
+                        Dur1 = sdr(Snd)
+                    }
+                    
+                    if(Interrupted1){
+                        Interrupted1 = 0
+                    }
+                }
+                
+                local NRPM = LowIdleActual1 == 0 ? MinRPM : round((((MaxRPM-IdleRPM)/NumEngineNotches)*CurNotches[SQ1 ? ES1+RevDirection1 : 0,number])+IdleRPM)
+                
+                if(RPM1 != NRPM){
+                    local TInt = (max(floor(Dur1*0.01),1))
+                    RPM1 += (NRPM - InitRPM1) / TInt
+                }
+                break
+            case 2,
+                # i dont know how this works if you know any engine configs that have their overrides as number 2 or their engine behavior is like this
+                # somewhere in here which has a 2
+                # EngineBehavior = array(0,  0,  0,  0,  0,  0,  2,  0)
+                # please contact NIl if you see me in Lexon or FC&N or audy4468 on discord thankyou!
+                break
+            case 3,
+                #Dur = 0
+                break
+            case 4,
+                if(!SQ1){
+                    RevDirection1 = 0
+                    Dur1 = 2000
+                    if(RPM1 >= LowIdleActual1 == 0 ? MinRPM : IdleRPM){
+                        RPM1 = LowIdleActual1 == 0 ? MinRPM : IdleRPM
+                        InitRPM1 = LowIdleActual1 == 0 ? MinRPM : IdleRPM
+                        SQ1 = 1
+                    }
+                }else{
+                    if(changed(ES1) & !Interrupted1){
+                        local Snd = UpOverrides[ES1,string]
+                        Dur1 = sdr(Snd)
+                    }
+                    
+                    if(Interrupted1){
+                        Interrupted1 = 0
+                    }
+                }
+                
+                local NRPM = LowIdleActual1 == 0 ? MinRPM : round((((MaxRPM-IdleRPM)/NumEngineNotches)*CurNotches[SQ1 ? ES1+RevDirection1 : 0,number])+IdleRPM)
+                
+                if(RPM1 != NRPM){
+                    local TInt = (max(floor(Dur1*0.01),1))
+                    RPM1 += (NRPM - InitRPM1) / TInt
+                }
+                break
+        }
+        
+        if(RevDirection1 == 1 & LowIdleActual1 > 0 & (changed(RevDirection1) | changed(ES1) | changed(To))){
+            if(!TQ1){
+                TQ1 = 1
+                timer("Up1",Dur1)
+            }
+            elseif(TQ1 & To <= ES1){
+                InitRPM1 = RPM1
+                stoptimer("Down1")
+                stoptimer("Up1")
+                TQ1 = 0
+                Interrupted1 = 1
+                RevDirection1 = 0
+            }
+        }elseif(RevDirection1 == -1 & LowIdleActual1 > 0 & (changed(RevDirection1) | changed(ES1) | changed(To))){
+            if(!TQ1){
+                TQ1 = 1
+                timer("Down1",Dur1)
+            }
+            elseif(TQ1 & To >= ES1){
+                InitRPM1 = RPM1
+                stoptimer("Up1")
+                stoptimer("Down1")
+                Interrupted1 = 1
+                TQ1 = 0
+                RevDirection1 = 0
+            }
+        }
+        
+    }
+    
+    function void transitionRPM2(To){
+        if(!On2) {return void}
+        
+        local BType = EngineBehavior[ES2,number]        
+        RevDirection2 = ES2 > To ? -1 : ES2 == To? RevDirection2 : 1
+        
+        switch(BType){
+            case 0,
+                if(!SQ2){
+                    RevDirection2 = 0
+                    Dur2 = 2000
+                    if(RPM2 >= LowIdling2 ? MinRPM : IdleRPM){
+                        RPM2 = LowIdling2 ? MinRPM : IdleRPM
+                        InitRPM2 = LowIdling2 ? MinRPM : IdleRPM
+                        SQ2 = 1
+                    }
+                }else{
+                    if(changed(ES2) & !Interrupted2){
+                        local Snd = TransitionPath+(RevDirection2 == 1 ? "up/" : "down/")+(ES2):toString()+"-"+((ES2+RevDirection2)):toString()+"b.wav"
+                        Dur2 = sdr(Snd)#-sdr(Snd2)
+                    }
+                    
+                    if(Interrupted2){
+                        Interrupted2 = 0
+                    }
+                }
+                
+                local NRPM = LowIdling2 == 1 ? MinRPM : round((((MaxRPM-IdleRPM)/NumEngineNotches)*CurNotches[SQ2 ? ES2+RevDirection2 : 0,number])+IdleRPM)
+                
+                if(RPM2 != NRPM){
+                    local TInt = (max(floor(Dur2*0.01),1))
+                    RPM2 += (NRPM - InitRPM2) / TInt
+                }
+                
+                break
+            case 1,
+                if(!SQ2){
+                    RevDirection2 = 0
+                    Dur2 = 2000
+                    if(RPM2 >= LowIdling2 ? MinRPM : IdleRPM){
+                        RPM2 = LowIdling2 ? MinRPM : IdleRPM
+                        InitRPM2 = LowIdling2 ? MinRPM : IdleRPM
+                        SQ2 = 1
+                    }
+                }else{
+                    if(changed(ES2) & !Interrupted2){
+                        local Snd = TransitionPath+(RevDirection2 == 1 ? "up/" : "down/")+(ES2):toString()+"-"+((ES2+RevDirection2)):toString()+".wav"
+                        Dur2 = sdr(Snd)
+                        #print(Snd," ",Dur1," ",RevDirection1)
+                    }
+                    
+                    if(Interrupted2){
+                        Interrupted2 = 0
+                    }
+                }
+                
+                local NRPM = LowIdling2 == 1 ? MinRPM : round((((MaxRPM-IdleRPM)/NumEngineNotches)*CurNotches[SQ2 ? ES2+RevDirection2 : 0,number])+IdleRPM)
+                
+                if(RPM2 != NRPM){
+                    local TInt = (max(floor(Dur2*0.01),1))
+                    RPM2 += (NRPM - InitRPM2) / TInt
+                }
+                break
+            case 2,
+                # i dont know how this works if you know any engine configs that have their overrides as number 2 or their engine behavior is like this
+                # somewhere in here which has a 2
+                # EngineBehavior = array(0,  0,  0,  0,  0,  0,  2,  0)
+                # please contact NIl if you see me in Lexon or FC&N or audy4468 on discord thankyou!
+                break
+            case 3,
+                #Dur = 0
+                break
+            case 4,
+                if(!SQ2){
+                    RevDirection2 = 0
+                    Dur2 = 2000
+                    if(RPM2 >= LowIdling2 ? MinRPM : IdleRPM){
+                        RPM2 = LowIdling2 ? MinRPM : IdleRPM
+                        InitRPM2 = LowIdling2 ? MinRPM : IdleRPM
+                        SQ2 = 1
+                    }
+                }else{
+                    if(changed(ES2) & !Interrupted2){
+                        local Snd = UpOverrides[ES2,string]
+                        Dur2 = sdr(Snd)
+                    }
+                    
+                    if(Interrupted2){
+                        Interrupted2 = 0
+                    }
+                }
+                
+                local NRPM = LowIdling2 == 1 ? MinRPM : round((((MaxRPM-IdleRPM)/NumEngineNotches)*CurNotches[SQ2 ? ES2+RevDirection2 : 0,number])+IdleRPM)
+                
+                if(RPM2 != NRPM){
+                    local TInt = (max(floor(Dur2*0.01),1))
+                    RPM2 += (NRPM - InitRPM2) / TInt
+                }
+                break
+        }
+        
+        if(RevDirection2 == 1 & !LowIdling2 & (changed(RevDirection2) | changed(ES2) | changed(To))){
+            if(!TQ2){
+                TQ2 = 1
+                timer("Up2",Dur2)
+            }
+            elseif(TQ2 & To <= ES2){
+                InitRPM2 = RPM2
+                stoptimer("Down2")
+                stoptimer("Up2")
+                TQ2 = 0
+                Interrupted2 = 1
+                RevDirection2 = 0
+            }
+        }elseif(RevDirection2 == -1 & !LowIdling2 & (changed(RevDirection2) | changed(ES2) | changed(To))){
+            if(!TQ2){
+                TQ2 = 1
+                timer("Down2",Dur2)
+            }
+            elseif(TQ2 & To >= ES2){
+                InitRPM2 = RPM2
+                stoptimer("Up2")
+                stoptimer("Down2")
+                Interrupted2 = 1
+                TQ2 = 0
+                RevDirection2 = 0
+            }
+        }
+    
+    }
+    
+    function shutdown1(){
+        Dur1 = 6000
+        local NRPM = 0
+                
+        if(RPM1 != NRPM){
+            local TInt = max(floor(Dur1*0.01),100)
+            RPM1 += (NRPM - InitRPM1) / TInt
+        }
+        
+        if(RPM1 <= 0){
+            ES1 = 0
+            RPM1 = 0
+            InitRPM1 = 0
+        }
+    }
+    
+    function shutdown2(){
+        Dur2 = 6000
+        local NRPM = 0
+                
+        if(RPM2 != NRPM){
+            local TInt = max(floor(Dur2*0.01),100)
+            RPM2 += (NRPM - InitRPM2) / TInt
+        }
+        
+        if(RPM2 <= 0){
+            ES2 = 0
+            RPM2 = 0
+            InitRPM2 = 0
+        }
+    }
+    
+    CtlTable["AirBrakeMode",number] = CtlTableCtrlStand["AirBrakeMode",number]
+    CtlTable["InitialReduction",number] = CtlTableCtrlStand["InitialReduction",number]
+    CtlTable["NotchedThrottle",number] = CtlTableCtrlStand["NotchedThrottle",number]
+    CtlTable["NumThrottleNotches",number] = CtlTableCtrlStand["NumThrottleNotches",number]
+    CtlTable["NotchedDynamics",number] = CtlTableCtrlStand["NotchedDynamics",number]
+    CtlTable["TransitionMode",number] = CtlTableCtrlStand["TransitionMode",number]
+    CtlTable["TransitionControlType",number] = CtlTableCtrlStand["TransitionControlType",number]
+    CtlTable["CS_Version",string] = CtlTableCtrlStand["CS_Version",string]
+    CtlTable["CTL_Version",string] = CtlTableCtrlStand["CTL_Version",string]
+    
+    VerifyL[2,number] = FuelLine
+    
+    timer("timer",1)
+}
+
+if(clk("timer")){
+    if(FuelLine == 0){
+        RLCPTW = RLCPT:wirelink()
+        On1 = RLCPTW["On1",number]
+        On2 = RLCPTW["On2",number]
+        MPH = RLCPTW["MPH",number]
+        EngineNotch1 = RLCPTW["EngineNotch1",number]
+        EngineNotch2 = RLCPTW["EngineNotch1",number]
+        Reverser = RLCPTW["Reverser",number]
+        EngineSpeed1 = RLCPTW["EngineSpeed1",number]
+        EngineSpeed2 = RLCPTW["EngineSpeed1",number]
+        Primed1 = RLCPTW["Primed1",number]
+        Primed2 = RLCPTW["Primed1",number]
+        PrimerSet1 = RLCPTW["PrimerSet1",number]
+        PrimerSet2 = RLCPTW["PrimerSet1",number]
+        
+        DrivenMiles += (MPH / 18000)
+        DrivenKilometers = DrivenMiles*1.60934
+        
+        if(DPM){
+            local GallonsThreshold = 0.05
+            
+            if(((On1 | RPM1 > 0) & Gallons > GallonsThreshold) | ((On2 | RPM2 > 0) & Gallons > GallonsThreshold)){
+                transitionRPM1(EngineNotch1)
+                transitionRPM2(EngineNotch2)
+                
+                RPM1 = max(0, RPM1)
+                RPM2 = max(0, RPM2)
+                
+                SetThrottle = CtlTableCtrlStand["SetThrottle", number]
+                SetDynamics = CtlTableCtrlStand["SetDynamics", number]
+                
+                local GallonsConsumed = ((FCR / 3600) / 10000) * ((RPM1*(RPM1/IdleRPM)^LN) + (RPM2*(RPM2/IdleRPM)^LN))
+                Gallons = max(0, Gallons - GallonsConsumed)
+            }else{
+                transitionRPM1(0)
+                transitionRPM2(0)
+                
+                RPM1 = max(0, RPM1)
+                RPM2 = max(0, RPM2)
+                
+                SetThrottle = 0
+                SetDynamics = 0
+                
+                local GallonsConsumed = ((FCR / 3600) / 10000) * ((RPM1*(RPM1/IdleRPM)^LN) + (RPM2*(RPM2/IdleRPM)^LN))
+                Gallons = max(0, Gallons - GallonsConsumed)
+            }
+            
+            if(On1 & Gallons == 0 & RPM1 < (IdleRPM + (IdleRPM/8)) | Shutdown1B){
+                Shutdown1 = 1
+                SQ1 = 0
+            }
+            
+            if(!On1 & Gallons > 0 & Start1B){
+                Start1 = 1
+                if(changed(Primed1) & Primed1==1){
+                    Start1 = 0
+                }
+            }elseif(!On1){
+                if(RPM1 > 0){
+                    shutdown1()
+                }
+                
+                local Starting1 = ((PrimerSet1 & Primed1) | Start1B) & Primed1
+                
+                if(Starting1){
+                    Gallons -= ((FCR / 3600) * 10.5)
+                    Gallons = max(0,Gallons)
+                }
+                
+                SQ1 = 0
+                Shutdown1 = 0
+                if(!Start1B & Start1){
+                    Start1 = 0
+                }
+            }
+            
+            if(On2 & Gallons == 0 & RPM2 < (IdleRPM + (IdleRPM/8)) | Shutdown2B){
+                Shutdown2 = 1
+                SQ2 = 0
+            }
+            
+            if(!On2 & Gallons > 0 & Start2B){
+                Start2 = 1
+                if(changed(Primed2) & Primed2==1){
+                    Start2 = 0
+                }
+            }elseif(!On2){
+                if(RPM2 > 0){
+                    shutdown2()
+                }
+                
+                local Starting2 = ((PrimerSet2 & Primed2) | Start2B) & Primed2
+                
+                if(Starting2){
+                    Gallons -= ((FCR / 3600) * 10.5)
+                    Gallons = max(0,Gallons)
+                }
+                
+                SQ2 = 0
+                Shutdown2 = 0
+                if(!Start2B & Start2){
+                    Start2 = 0
+                }
+            }
+        }else{
+            local GallonsThreshold = 0.05
+            
+            if((On1 | RPM1 > 0) & Gallons > GallonsThreshold){
+                transitionRPM1(EngineNotch1)
+                
+                RPM1 = max(0,RPM1)
+                
+                SetThrottle = CtlTableCtrlStand["SetThrottle",number]
+                SetDynamics = CtlTableCtrlStand["SetDynamics",number]
+                
+                local GallonsConsumed = ((FCR / 3600) / 10000) * ((RPM1*(RPM1/IdleRPM)^LN))
+                Gallons = max(0, Gallons - GallonsConsumed)
+                
+            }else{
+                transitionRPM1(0)
+                
+                RPM1 = max(0,RPM1)
+                
+                SetThrottle = 0
+                SetDynamics = 0
+                
+                local GallonsConsumed = ((FCR / 3600) / 10000) * ((RPM1*(RPM1/IdleRPM)^LN))
+                Gallons = max(0, Gallons - GallonsConsumed)
+            }
+            
+            if(On1 & Gallons == 0 & RPM1 < (IdleRPM + (IdleRPM/8)) | Shutdown1B){
+                Shutdown1 = 1
+                SQ1 = 0
+            }
+            
+            if(!On1 & Gallons > 0 & Start1B){
+                Start1 = 1
+                if(changed(Primed1) & Primed1==1){
+                    Start1 = 0
+                }
+            }elseif(!On1){
+                if(RPM1 > 0){
+                    shutdown1()
+                }
+                
+                local Starting1 = ((PrimerSet1 & Primed1) | Start1B) & Primed1
+            
+                if(Starting1){
+                    Gallons -= ((FCR / 3600) * 10.5)
+                    Gallons = max(0,Gallons)
+                }
+                
+                SQ1 = 0
+                Shutdown1 = 0
+                if(!Start1B & Start1){
+                    Start1 = 0
+                }
+            }
+        }
+        
+        FuelLevel = Gallons
+        FuelPercentage = Gallons / FuelCapacity
+        
+        #another one from ptgamma that i have understood how it works yay! hope theres no bugs in it....
+        if(FuelSaverMode){
+            local LIB1 = (EngineNotch1==0) & (ES1==0) #Low Idle Basic
+            local LIN1 = (EngineNotch1==0) & (ES1==0) & (Reverser==0) #Low Idle Natural
+            LowIdleTarget1 = (EIIS_Enabled & IdleOverride) ? (LIB1 ? 2 : 1) : (LIN1 ? (FuelSaverMode==2) : 1) #0 for Low, 1 for High, 2 for Higher
+            
+            if(On1){
+                if((LowIdleTarget1==0) & (LowIdleActual1!=0) & !LowIdleWaiting1 & SQ1){
+                    #print("Target 0")
+                    if(FuelSaverDelay>0){
+                        LowIdleWaiting1 = 1
+                        timer("IdleDown1",FuelSaverDelay*1000)
+                    }
+                }elseif((LowIdleTarget1==1) & (LowIdleActual1!=1)){
+                    #print("Target 1")
+                    InitRPM1 = RPM1
+                    if(EIIS_Enabled & IdleOverride & (EngineNotch1==2) & (ES1==0)){
+                        local Snd = EIIS_HigherTo2
+                        Dur1 = sdr(Snd)
+                        ES1 = 2
+                    }else{
+                        local Snd = (LowIdleActual1==0) ? TransitionToHigh : EIIS_HigherToHigh
+                        Dur1 = sdr(Snd)
+                    }
+                    LowIdleActual1 = 1
+                }elseif((LowIdleTarget1==2) & (LowIdleActual1!=2)){ #Go To Higher Idle
+                    local Snd = (LowIdleActual1==0) ? EIIS_LowToHigher : EIIS_HighToHigher
+                    Dur1 = sdr(Snd)
+                    LowIdleActual1 = 2
+                }
+                
+                if((LowIdleTarget1>0) & LowIdleWaiting1){
+                    stoptimer("IdleDown1")
+                    InitRPM1 = RPM1
+                    LowIdleWaiting1 = 0
+                }
+            }
+            
+            if(DPM & On2){
+                LowIdleCondition2 = (EngineNotch2==0) & (EngineSpeed2==0) & (Reverser==0)
+                if(LowIdleCondition2 & !LowIdling2 & !LowIdleWaiting2 & SQ2){
+                    if(FuelSaverDelay>0){
+                        LowIdleWaiting2 = 1
+                        timer("IdleDown2",FuelSaverDelay*1000)
+                    }
+                }elseif(!LowIdleCondition2 & LowIdling2){
+                    InitRPM2 = RPM2
+                    local Snd = TransitionToHigh
+                    Dur1 = sdr(Snd)
+                    LowIdling2 = 0
+                }
+                
+                if(!LowIdleCondition2 & LowIdleWaiting2){
+                    stoptimer("IdleDown2")
+                    InitRPM2 = RPM2
+                    LowIdleWaiting2 = 0
+                }
+            }
+        }
+        
+        #print(Start1)
+        #print(Gallons, " ", RPM, " ", DRPM)
+        #print(CtlTable["SetThrottle",number]," ",CtlTable["SetDynamics",number])
+        
+        if(->DoNotWireIn & DoNotWireIn[1,number] > 0 | FuelLineIn["GPS",number] > 0){
+            if(!Refuel){
+                Refuel = 1
+                timer("Refuel",10)
+            }
+        }elseif(!->DoNotWireIn & !(FuelLineIn["GPS",number] > 0) & (VerifyL[3,number] != 0 | VerifyL[4,number] != 0)){
+            VerifyL[3,number] = 0
+            VerifyL[4,number] = 0
+            
+            if(Refuel){
+                Refuel = 0
+            }
+        }
+        
+        if(!NameQ){
+            NameQ = 1
+            addName(0,"RLCPT Fuel Mod [BETA "+Version+"]")
+            addName(1,"Made by NIl")
+            addName(2,"Fuel: "+Gallons+" gal")
+            addName(3,"FuelCapacity: "+FuelCapacity+" gal")
+            
+            if(DPM){
+                addName(4,"Gallons consumed per hour: "+(round((FCR/1000) * (RPM1*(RPM1/IdleRPM)^LN),2)+round((FCR/1000) * (RPM2*(RPM2/IdleRPM)^LN),2))+" gal")
+                addName(5,"RPM1 sim: "+RPM1+"\nRPM2 sim: "+RPM2)
+            }else{
+                addName(4,"Gallons consumed per hour: "+round((FCR/1000) * (RPM1*(RPM1/IdleRPM)^LN),2)+" gal")
+                addName(5,"RPM simulator: "+RPM1)
+            }
+            addName(6,"The Web UPDATE!!!!!!!!!!!!!!!!!!!!1!!!111!!!!1!1111!11!!!1")
+            
+            setArrayName(CurName)
+            timer("ResetNameQ",1250)
+        }
+        
+        FuelLineOut["Name",array] = CurName
+        FuelLineOut["FuelLevel",number] = FuelLevel
+        FuelLineOut["FuelPercentage",number] = FuelPercentage
+        FuelLineOut["Pump2",number] = VerifyL[4,number]
+        FuelLineOut["GPS",number] = FuelLineIn["GPS",number] # no this is not a global positioning system
+        
+        timer("timer",100) # do not change if you want pumping flow rate to be accurate
+    }else{
+        local Arr = FuelLineIn["Name",array]
+        Arr[0,string] = "RLCPT Fuel Mod [BETA "+Version+"] (Inlet)"
+        Arr[6,string] = "Inlet? inlet INLET INLLLETTTTT YAY11!!11!!1!!!!"
+        
+        setArrayName(Arr)
+        FuelLineOut["GPS",number] = DoNotWireIn[1,number]
+        FuelLevel = FuelLineIn["FuelLevel",number]
+        FuelPercentage = FuelLineIn["FuelPercentage",number]
+        VerifyL[4,number] = FuelLineIn["Pump2",number]
+        
+        timer("timer",100) # do not change if you want pumping flow rate to be accurate
+    }
+}
+
+if(clk("ResetNameQ")){
+    NameQ = 0
+}
+
+if(!FuelLine){
+    CtlTable["SetReverser",number] = CtlTableCtrlStand["SetReverser",number]
+    CtlTable["SetThrottle",number] = SetThrottle
+    CtlTable["SetDynamics",number] = SetDynamics
+    CtlTable["SetSelector",number] = CtlTableCtrlStand["SetSelector",number]
+    CtlTable["SetBrakeNotch",number] = CtlTableCtrlStand["SetBrakeNotch",number]
+    CtlTable["SetEqualRes",number] = CtlTableCtrlStand["SetEqualRes",number]
+    CtlTable["SetHolding",number] = CtlTableCtrlStand["SetHolding",number]
+    CtlTable["Overcharge",number] = CtlTableCtrlStand["Overcharge",number]
+    CtlTable["FRC",number] = CtlTableCtrlStand["FRC",number]
+    #CtlTable["SetLocoBrakeNotch",number] = SetLocoBrakeNotch
+    CtlTable["SetLocoBrakePressure",number] = CtlTableCtrlStand["SetLocoBrakePressure",number]
+    CtlTable["SetBleeding",number] = CtlTableCtrlStand["SetBleeding",number]
+    CtlTable["SetHumpMultiplier",number] = CtlTableCtrlStand["SetHumpMultiplier",number]
+    CtlTable["SetFeedPressure",number] = CtlTableCtrlStand["SetFeedPressure",number]
+    
+    CtlTable["EmergencyBrake",number] = CtlTableCtrlStand["EmergencyBrake",number]
+    CtlTable["HandBrake",number] = CtlTableCtrlStand["HandBrake",number]
+    CtlTable["Sander",number] = CtlTableCtrlStand["Sander",number]
+    CtlTable["CS_Version",string] = CtlTableCtrlStand["CS_Version",string]
+    CtlTable["CTL_Version",string] = CtlTableCtrlStand["CTL_Version",string]
+    
+    if(clk("Up1")){
+        ES1++
+        #huhahuha
+        #huhahuha dont judge me
+        if(ES1 > EngineSpeed1){
+            ES1 = EngineSpeed1-1
+        }
+        RPM1 = LowIdleActual1 ? round((((MaxRPM-IdleRPM)/NumEngineNotches)*CurNotches[SQ1 ? ES1 : 0,number])+IdleRPM) : MinRPM
+        RevDirection1 = 0
+        InitRPM1 = RPM1 
+        TQ1 = 0
+    }
+    
+    if(clk("Down1")){
+        ES1--
+        #magicery
+        #chicanery
+        if(ES1 < EngineSpeed1){
+            ES1 = EngineSpeed1+1
+        }
+        RPM1 = LowIdleActual1 ? round((((MaxRPM-IdleRPM)/NumEngineNotches)*CurNotches[SQ1 ? ES1 : 0,number])+IdleRPM) : MinRPM
+        RevDirection1 = 0
+        InitRPM1 = RPM1
+        TQ1 = 0
+    }
+    
+    if(clk("Up2")){
+        ES2++
+        if(ES2 > EngineSpeed2){
+            ES2 = EngineSpeed2-1
+        }
+        RPM2 = LowIdling2 ? MinRPM : round((((MaxRPM-IdleRPM)/NumEngineNotches)*CurNotches[SQ2 ? ES2 : 0,number])+IdleRPM)
+        RevDirection2 = 0
+        InitRPM2 = RPM2
+        TQ2 = 0
+    }
+    
+    if(clk("Down2")){
+        ES2--
+        if(ES2 < EngineSpeed2){
+            ES2 = EngineSpeed2+1
+        }
+        RPM2 = LowIdling2 ? MinRPM : round((((MaxRPM-IdleRPM)/NumEngineNotches)*CurNotches[SQ2 ? ES2 : 0,number])+IdleRPM)
+        RevDirection2 = 0
+        InitRPM2 = RPM2
+        TQ2 = 0
+    }
+    
+    if(clk("Refuel")){
+        local F1 = ((randint(DoNotWireIn[1,number]-(DoNotWireIn[1,number]/4),DoNotWireIn[1,number]+(DoNotWireIn[1,number]/4)))/100)/10
+        local F2 = ((randint(FuelLineIn["GPS",number]-(FuelLineIn["GPS",number]/4),FuelLineIn["GPS",number]+(FuelLineIn["GPS",number]/4)))/100)/10
+        
+        if((Gallons + F1) > FuelCapacity){
+            local Excess1 = (Gallons + F1) > FuelCapacity ? (Gallons + F1) - FuelCapacity : 0
+            F1 = F1 - Excess1
+        }
+        
+        if(Gallons + F2 > FuelCapacity){
+            local Excess2 = (Gallons + F2) > FuelCapacity ? (Gallons + F2) - FuelCapacity : 0
+            F2 = F2 - Excess2
+        }
+        
+        VerifyL[3,number] = VerifyL[3,number] + F1
+        VerifyL[4,number] = VerifyL[4,number] + F2
+    
+        Gallons += F1 + F2
+        Gallons = min(FuelCapacity,Gallons)
+        
+        if(Refuel){
+            timer("Refuel",100)
+        }
+    }
+    
+    if(clk("IdleDown1")){
+        #print("Idling Down")
+        InitRPM1 = RPM1
+        local Snd = TransitionToLow
+        Dur1 = sdr(Snd)
+        LowIdleActual1 = 0
+        LowIdleWaiting1 = 0
+    }
+    
+    if(clk("IdleDown2")){
+        InitRPM2 = RPM2
+        local Snd = TransitionToLow
+        Dur2 = sdr(Snd)
+        LowIdling2 = 1
+        LowIdleWaiting2 = 0
+    }
+}
+
+if(Save & !FuelLine){
+    if(!Loaded & fileCanLoad()){
+        load(CompanyName)
+    }
+    
+    if(fileClk()){
+        local Status = fileStatus()
+        switch(Status){
+            case _FILE_UNKNOWN, case _FILE_TIMEOUT, case _FILE_404, case _FILE_TRANSFER_ERROR,
+                timer("save",10)
+                print("File Unknown Creating New file with ",CompanyName,".txt")
+            break
+        }
+        if(fileLoaded()){
+            Loaded = 1
+            Format = vonDecodeTable(fileRead())
+            
+            if(Format:count() == 0){
+                if(vonError()){
+                    print("Data load failed, vON decoding error! Check for NaNs in your file.")
+                }else{
+                    timer("save",10)
+                    print("Data load failed, selected file is empty! Adding current Loco #",ReportingNumber," To ",CompanyName,".txt")
+                }
+            }else{
+                if(Format[CompanyName,table][ReportingNumber,table]:count() == 0){
+                    timer("save",10)
+                }else{
+                    Gallons = Format[CompanyName,table][ReportingNumber,table]["Fuel",number] > FuelCapacity ? FuelCapacity : Format[CompanyName,table][ReportingNumber,table]["Fuel",number]
+                    DrivenMiles = Format[CompanyName,table][ReportingNumber,table]["DrivenMiles",number]
+                    DrivenKilometers = DrivenMiles*1.60934  
+                }
+            }
+        }
+    }
+    
+    if(last() & Loaded){
+        local Data = table()
+        Data["Fuel",number] = Gallons
+        Data["DrivenMiles",number] = DrivenMiles
+        local Saved = save(CompanyName,ReportingNumber,Data)
+    }
+}
+
+if(clk("save")){
+    local Data = table()
+    Data["Fuel",number] = Gallons
+    Data["DrivenMiles",number] = DrivenMiles
+    save(CompanyName,ReportingNumber,Data)
+}
+
+if(clk("Timeout")){
+    runOnHTTP(0)
+    print("[Fuel Mod] Version checking Failed")
+    O:soundPlay(0,0,"ui/medic_alert.wav")
+}elseif(httpClk() & !FuelLine){
+    runOnHTTP(0)
+    stoptimer("Timeout")
+    local Data = httpData()
+    local Explosion = Data:explode(".")
+    local Ultimate_Version = Explosion[1,string]:toNumber()
+    local Major_Version = Explosion[2,string]:toNumber()
+    local Minor_Version = Explosion[3,string]:toNumber()
+    
+    local Dies = Version:explode(".")
+    local Ultimate_Local_Version = Dies[1,string]:toNumber()
+    local Major_Local_Version = Dies[2,string]:toNumber()
+    local Minor_Local_Version = Dies[3,string]:toNumber()
+    
+    if(Ultimate_Version > Ultimate_Local_Version){
+        print("[Fuel Mod] Theres an ULTIMATE UPDATE!?!?!!")
+        printColor("Get Version ",vec(102,255,255),Data,vec(255,255,255)," at ",vec(57,133,208),"https://github.com/Au-0NIl/RLCPT-Fuel-Mod",vec(255,255,255),"!")
+        O:soundPlay(0,0,"buttons/weapon_cant_buy.wav")
+        O:soundPlay(1,0,"vo/engineer_moveup01.mp3")
+    }elseif(Major_Version > Major_Local_Version){
+        print("[Fuel Mod] Theres a major update!")
+        printColor("Get Version ",vec(102,255,255),Data,vec(255,255,255)," at ",vec(57,133,208),"https://github.com/Au-0NIl/RLCPT-Fuel-Mod",vec(255,255,255),"!")
+        O:soundPlay(0,0,"buttons/combine_button_locked.wav")
+        O:soundPlay(1,0,"vo/engineer_moveup01.mp3")
+    }elseif(Minor_Version > Minor_Local_Version){
+        print("[Fuel Mod] Theres a minor update!")
+        printColor("Get Version ",vec(102,255,255),Data,vec(255,255,255)," at ",vec(57,133,208),"https://github.com/Au-0NIl/RLCPT-Fuel-Mod",vec(255,255,255),"!")
+        O:soundPlay(0,0,"buttons/lightswitch2.wav")
+        O:soundPlay(1,0,"vo/engineer_moveup01.mp3")
+    }elseif(Ultimate_Local_Version > Ultimate_Version | Major_Local_Version > Major_Version | Minor_Local_Version > Minor_Version){
+        print("[Fuel Mod] Version higher than recent version! are you using the dev version? is there even a dev one?")
+        O:soundPlay(0,0,"buttons/coop_apc_lever.wav")
+    }else{
+        O:soundPlay(0,0,"ui/hitsound_electro3.wav")
+        print("[Fuel Mod] Version up-to-date!")
+    }
+}

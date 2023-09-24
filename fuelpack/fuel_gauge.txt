@@ -1,0 +1,25 @@
+@name Fuel Gauge
+@inputs FuelPercentage
+@outputs 
+@persist E:entity Length
+@trigger 
+@model models/gsgtrainprops/parts/fuel/emd_sightglass_legacy.mdl
+if(first()|duped()){
+    E = entity()
+    
+    E:setSubMaterial(6,"null")
+    
+    Length = 0.65
+    
+    holoCreate(0,E:toWorld(vec()),vec(0.1,0.1,Length),E:angles(),vec(155),"cylinder")
+    holoMaterial(0,"models/proppertextures/acrylic")
+    holoColor(0,vec4(255,0,0,100))
+    holoParent(0,E)
+    
+    holoCreate(1,E:toWorld(vec()),vec(0.105,0.105,0.025),E:angles(),vec(155),"cylinder")
+    holoParent(1,E)
+}
+
+holoScale(0,vec(0.1,0.1,FuelPercentage*Length))
+holoPos(0,E:toWorld(vec(0,1,((FuelPercentage * Length) - Length) * 6)))
+holoPos(1,E:toWorld(vec(0,1,((FuelPercentage*2 * Length) - Length) * 6)))
