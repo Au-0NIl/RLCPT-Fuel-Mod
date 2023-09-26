@@ -1,5 +1,5 @@
 @name FBD Fender Bender Defender CMB
-@inputs Enable Active MPH Unfreeze Base:entity
+@inputs Enable Active MPH Base:entity
 @outputs EmBrake CycleTime TruckCount Running Analyzing RTD_Counter Enable_True PCS_Open
 @persist Trucks:array TruckTypes:array W:entity O:entity AUTOPARENT SpeedThreshold Index RTD FreezeOnDerail Running Initialized Interval Derail MarkerColor:vector
 @persist TruckModels:array SpeedQ Paths:table Analyzing TC Consist:array AI LazyMode Disabled
