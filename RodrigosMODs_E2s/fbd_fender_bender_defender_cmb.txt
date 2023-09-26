@@ -8,8 +8,6 @@
 @model models/Items/combine_rifle_ammo01.mdl
 if(first()|duped()){
     
-    Base:parent()
-    
     local Version = "V3 modified by RodrigosMOD"
     #[
     
@@ -47,7 +45,7 @@ if(first()|duped()){
     .r (number). For example .r1, .r2, .r3, .r4 until you reach .r10 which is the last rerail command (i switched from .rerail to .r so its faster for rerailing and can prevent some accidents)
     .u (unfreeze). This command just unfreeze the entire consist, nothing special
     
-    Listo of customization in the e2:
+    List of customization in the e2:
     
     in Line: 361, 362, 366, 367 you can find some 27 and -27 values, that's the track gauge. 27 is for RSG and 38 is for PHX
     in Line: 383, between the "" in the () you can add a sound when you derail
