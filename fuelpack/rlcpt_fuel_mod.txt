@@ -15,7 +15,34 @@
 @trigger none
 @model models/parts/flumz/fuelline.mdl
 
-if(duped()|dupefinished()){
+if(duped()){
+    CtlTable["AirBrakeMode",number] = CtlTableCtrlStand["AirBrakeMode",number]
+    CtlTable["InitialReduction",number] = CtlTableCtrlStand["InitialReduction",number]
+    CtlTable["NotchedThrottle",number] = CtlTableCtrlStand["NotchedThrottle",number]
+    CtlTable["NumThrottleNotches",number] = CtlTableCtrlStand["NumThrottleNotches",number]
+    CtlTable["NotchedDynamics",number] = CtlTableCtrlStand["NotchedDynamics",number]
+    CtlTable["TransitionMode",number] = CtlTableCtrlStand["TransitionMode",number]
+    CtlTable["TransitionControlType",number] = CtlTableCtrlStand["TransitionControlType",number]
+    CtlTable["CS_Version",string] = CtlTableCtrlStand["CS_Version",string]
+    CtlTable["CTL_Version",string] = CtlTableCtrlStand["CTL_Version",string]
+    
+    CtlTable["SetReverser",number] = CtlTableCtrlStand["SetReverser",number]
+    CtlTable["SetThrottle",number] = CtlTableCtrlStand["SetThrottle",number]
+    CtlTable["SetDynamics",number] = CtlTableCtrlStand["SetDynamics",number]
+    CtlTable["SetSelector",number] = CtlTableCtrlStand["SetSelector",number]
+    CtlTable["SetBrakeNotch",number] = CtlTableCtrlStand["SetBrakeNotch",number]
+    CtlTable["SetEqualRes",number] = CtlTableCtrlStand["SetEqualRes",number]
+    CtlTable["SetHolding",number] = CtlTableCtrlStand["SetHolding",number]
+    CtlTable["Overcharge",number] = CtlTableCtrlStand["Overcharge",number]
+    CtlTable["FRC",number] = CtlTableCtrlStand["FRC",number]
+    CtlTable["SetLocoBrakePressure",number] = CtlTableCtrlStand["SetLocoBrakePressure",number]
+    CtlTable["SetBleeding",number] = CtlTableCtrlStand["SetBleeding",number]
+    CtlTable["SetHumpMultiplier",number] = CtlTableCtrlStand["SetHumpMultiplier",number]
+    CtlTable["SetFeedPressure",number] = CtlTableCtrlStand["SetFeedPressure",number]
+    
+    CtlTable["EmergencyBrake",number] = CtlTableCtrlStand["EmergencyBrake",number]
+    CtlTable["HandBrake",number] = CtlTableCtrlStand["HandBrake",number]
+    CtlTable["Sander",number] = CtlTableCtrlStand["Sander",number]
     reset()
 }
 
@@ -53,7 +80,7 @@ if(first()){
     |    Version = 1.0.0                                                                                                      |
     |                                                                                                                         |
     |    Fixed:                                                                                                               |
-    |       None                                                                                                              |
+    |       HOPEFULLY Fixed when setting this fuel e2 up for the first time load meter doesnt go UP/DOWN when notching        |
     |                                                                                                                         |
     #=========================================================================================================================#
         
@@ -516,6 +543,24 @@ if(first()){
     CtlTable["TransitionControlType",number] = CtlTableCtrlStand["TransitionControlType",number]
     CtlTable["CS_Version",string] = CtlTableCtrlStand["CS_Version",string]
     CtlTable["CTL_Version",string] = CtlTableCtrlStand["CTL_Version",string]
+    
+    CtlTable["SetReverser",number] = CtlTableCtrlStand["SetReverser",number]
+    CtlTable["SetThrottle",number] = CtlTableCtrlStand["SetThrottle",number]
+    CtlTable["SetDynamics",number] = CtlTableCtrlStand["SetDynamics",number]
+    CtlTable["SetSelector",number] = CtlTableCtrlStand["SetSelector",number]
+    CtlTable["SetBrakeNotch",number] = CtlTableCtrlStand["SetBrakeNotch",number]
+    CtlTable["SetEqualRes",number] = CtlTableCtrlStand["SetEqualRes",number]
+    CtlTable["SetHolding",number] = CtlTableCtrlStand["SetHolding",number]
+    CtlTable["Overcharge",number] = CtlTableCtrlStand["Overcharge",number]
+    CtlTable["FRC",number] = CtlTableCtrlStand["FRC",number]
+    CtlTable["SetLocoBrakePressure",number] = CtlTableCtrlStand["SetLocoBrakePressure",number]
+    CtlTable["SetBleeding",number] = CtlTableCtrlStand["SetBleeding",number]
+    CtlTable["SetHumpMultiplier",number] = CtlTableCtrlStand["SetHumpMultiplier",number]
+    CtlTable["SetFeedPressure",number] = CtlTableCtrlStand["SetFeedPressure",number]
+    
+    CtlTable["EmergencyBrake",number] = CtlTableCtrlStand["EmergencyBrake",number]
+    CtlTable["HandBrake",number] = CtlTableCtrlStand["HandBrake",number]
+    CtlTable["Sander",number] = CtlTableCtrlStand["Sander",number]
     
     VerifyL[2,number] = FuelLine
     
