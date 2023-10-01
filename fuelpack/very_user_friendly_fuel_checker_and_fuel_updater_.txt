@@ -1,0 +1,737 @@
+@name very user friendly fuel checker and fuel updater 
+@inputs [EGP]:wirelink [User]:entity
+@outputs 
+@persist Loaded Ready [Format NewFormat IndexColor]:table ArrForm:array [CurrentReportingNumber]:string CurrentPage CurrentPaginatedIndex Can FuelQ MileQ PaginationQ EGPFilter Print
+@persist [CompanyName OldCompanyName]:string
+@persist Task_Speed TaskClk [Tasks Tasks2 Tasks3 Tasks4 TaskLoops TaskDelayed Task2Delayed Task3Delayed Task4Delayed]:table
+@trigger Loaded Ready User
+
+if(first()|dupefinished()){
+    
+    #[
+    hi and welcome to our incredibly user-friendly Fuel Checker and Updater!
+    
+    This tool was created with the intention of making your fuel level management a breeze. It's worth noting that SOME users have found the 
+    VON ENCODED file format a bit tricky to navigate. Unfortunately, the encoding process is beyond my control, and I'm unable to alter how it's saved, 
+    as it's handled by an external encryptor, and was also not made by me.
+    
+    This is a TouchScreen EGP where you can CHECK and UPDATE your Fuel levels and DrivenMiles from your locomotives under CompanyName!
+    
+    Setup: 
+        1. Wire EGP to any EGP screens, make sure that the screen size big enough so that you can INTERACT WITH IT.
+        2. Wire User to any EGP screens
+        3. And you are done with the setup. you might also need to reset the chip multiple times for the screen to work properly
+        
+    Instructions on how to use:
+        you can click anywhere on the EGP screen!
+        select your desired loco inside the boxes or table to change their fuel or driven miles
+        when you have selected your loco reporting number you can do .delete to delete it. or do .delete <REPORTING NUMBER> to delete desired loco reporting number
+        to add loco reporting number do .add [REPORTING NUMBER] <FUEL LEVEL> <DRIVEN MILES>     
+        in chat, do .fuel [NUMBER] to change their fuel levels
+        do .miles to change their mileage
+        do .reset or .default to reset everything to default or back the way it used to be
+        do .save to save the current data. doing .save [CompanyName] will save it under a new file named CompanyName!
+        do .load to load any saved data!
+        do .number to change currently selected loco reporting number
+        do .print 1 or 0 to enable or disable printing to chatbox
+        
+    Chat Commands:
+        Legend: []*Required
+                <>*Optional
+        
+        .add [REPORTING NUMBER] <FUEL LEVEL> <DRIVEN MILES>
+        .delete <REPORTING NUMBER>
+        .find [REPORTING NUMBER]
+        .fuel [NUMBER]
+        .miles [NUMBER]
+        .default
+        .reset
+        .save <NAME>
+        .load [NAME]
+        .number or .n
+        .print 1 or 0
+    ]#
+    
+    CompanyName = "GO Transit" # case sensitive company name!
+    EGPFilter = 0 # make it so that only you can click the buttons in the egp screen?
+    Print = 1 # print whenever you save, select, change fuel numbers, reset, etc.?
+    
+    #<><=========================================DO NOT CHANGE BELOW=========================================><>#
+    runOnChat(1)
+    runOnFile(1)
+    
+    function void wirelink:initPage(PageNum){
+        This:egpClear()
+        switch(PageNum){
+            case 1,
+                This:egpBox(1,vec2(0,0),vec2(512,512))
+                This:egpColor(1,vec(0,171,197))
+            
+                This:egpDrawTopLeft(2)
+                This:egpRoundedBoxOutline(2, vec2(5,5), vec2(502,502))
+                This:egpColor(2,vec(255))
+                
+                This:egpDrawTopLeft(3)
+                This:egpRoundedBox(3, vec2(12,12), vec2(490,120))
+                This:egpColor(3,vec(105,189,210))
+                
+                This:egpBox(4,vec2(13,160),vec2(491,32))
+                This:egpColor(4,vec(0,171,197))
+                This:egpBox(5,vec2(13,191),vec2(491,32))
+                This:egpColor(5,vec(0,171,197))
+                This:egpBox(6,vec2(13,222),vec2(491,32))
+                This:egpColor(6,vec(0,171,197))
+                This:egpBox(7,vec2(13,253),vec2(491,32))
+                This:egpColor(7,vec(0,171,197))
+                This:egpBox(8,vec2(13,284),vec2(491,32))
+                This:egpColor(8,vec(0,171,197))
+                This:egpBox(9,vec2(13,315),vec2(491,32))
+                This:egpColor(9,vec(0,171,197))
+                This:egpBox(10,vec2(13,346),vec2(491,32))
+                This:egpColor(10,vec(0,171,197))
+                This:egpBox(11,vec2(13,377),vec2(491,16))
+                This:egpColor(11,vec(0,171,197))
+                This:egpRoundedBox(11*11,vec2(13,377),vec2(491,32))
+                This:egpColor(11*11,vec(0,171,197))
+                
+                This:egpDrawTopLeft(12)
+                This:egpRoundedBoxOutline(12, vec2(12,110), vec2(490,299))
+                This:egpColor(12,vec(255))
+                
+                This:egpBox(13,vec2(12,110),vec2(492,22))
+                This:egpColor(13,vec(0,171,197))
+                
+                This:egpLine(14,vec2(12,132),vec2(502,132))
+                
+                This:egpLine(15,vec2(100,132),vec2(100,409))
+                This:egpLine(16,vec2(290,132),vec2(290,409))
+                
+                This:egpLine(17,vec2(12,160),vec2(502,160))
+                
+                This:egpLine(18,vec2(12,191),vec2(502,191))
+                This:egpLine(19,vec2(12,222),vec2(502,222))
+                This:egpLine(20,vec2(12,253),vec2(502,253))
+                This:egpLine(21,vec2(12,284),vec2(502,284))
+                This:egpLine(22,vec2(12,315),vec2(502,315))
+                This:egpLine(23,vec2(12,346),vec2(502,346))
+                This:egpLine(24,vec2(12,377),vec2(502,377))
+                
+                This:egpText(25, CompanyName, vec2(256,16))
+                This:egpColor(25, vec4(255,255,255,255))
+                This:egpFont(25, "Arial", 70)
+                This:egpAlign(25,1)
+                
+                This:egpRoundedBox(26, vec2(12,420), vec2(242,80))
+                This:egpColor(26,vec(105,189,210)*1)
+                
+                This:egpText(27, "Previous", vec2(132,425))
+                This:egpColor(27, vec(255)*1)
+                This:egpFont(27, "Arial", 40)
+                This:egpAlign(27,1)
+                
+                This:egpTriangle(28,vec2(139,470),vec2(139,490),vec2(124,480))
+                This:egpColor(28, vec(255)*1)
+                #This:egpTriangle(28,vec2(121,470),vec2(121,490),vec2(138,480))
+                
+                This:egpRoundedBox(29, vec2(260,420), vec2(242,80))
+                This:egpColor(29,vec(105,189,210))
+                
+                This:egpText(30, "Next", vec2(385,425))
+                This:egpColor(30, vec(255)*1)
+                This:egpFont(30, "Arial", 40)
+                This:egpAlign(30,1)
+                
+                This:egpTriangle(31,vec2(379,470),vec2(379,490),vec2(394,480))
+                This:egpColor(31, vec(255)*1)
+                
+                This:egpText(32, "Num", vec2(56,138))
+                This:egpColor(32, vec(255))
+                This:egpFont(32, "Arial", 20)
+                This:egpAlign(32,1)
+                
+                This:egpText(33, "Fuel Level (imp gal)", vec2(195,138))
+                This:egpColor(33, vec(255))
+                This:egpFont(33, "Arial", 20)
+                This:egpAlign(33,1)
+                
+                This:egpText(34, "Miles Driven", vec2(396,138))
+                This:egpColor(34, vec(255))
+                This:egpFont(34, "Arial", 20)
+                This:egpAlign(34,1)
+                
+                This:egpText(35, "Page 0 of 0", vec2(486,112))
+                This:egpColor(35, vec(0,171,197))
+                This:egpFont(35, "Arial", 20)
+                This:egpAlign(35,2)
+                
+                This:egpText(36, "(0) Units Found", vec2(28,87))
+                This:egpColor(36, vec(105,189,210))
+                This:egpFont(36, "Arial", 18)
+                This:egpAlign(36,0)
+                
+                This:egpText(37, "Company Mileage (0)", vec2(486,87))
+                This:egpColor(37, vec(105,189,210))
+                This:egpFont(37, "Arial", 18)
+                This:egpAlign(37,2)
+                
+                This:egpText(38, "This is a touch screen!", vec2(28,112))
+                This:egpColor(38, vec(255))
+                This:egpFont(38, "Arial", 20)
+                This:egpAlign(38,0)
+                
+                for(I = 1, 8){
+                    This:egpText(39+(I*3), "Text", vec2(56,168+((I-1)*31)))
+                    This:egpColor(39+(I*3), vec(0,171,197))
+                    This:egpFont(39+(I*3), "Arial", 20)
+                    This:egpAlign(39+(I*3),1)
+                    
+                    This:egpText(40+(I*3), "Text1", vec2(195,168+((I-1)*31)))
+                    This:egpColor(40+(I*3), vec(0,171,197))
+                    This:egpFont(40+(I*3), "Arial", 20)
+                    This:egpAlign(40+(I*3),1)
+                    
+                    This:egpText(41+(I*3), "Text2", vec2(396,168+((I-1)*31)))
+                    This:egpColor(41+(I*3), vec(0,171,197))
+                    This:egpFont(41+(I*3), "Arial", 20)
+                    This:egpAlign(41+(I*3),1)
+                }
+                
+                break
+            case 2,
+                break
+        }
+    }
+    
+    function void printIt(String:string){
+        if(Print){print(String)}
+    }
+    
+    function number safe(){
+        return minquota() > 500
+    }
+    
+    function string form(N) {
+        local Abbrev = array("k", "Mil", "Bil", "T", "quadrillion", "Quintillion", "sextillion", "Septillion", "octillion", "nonillion", "decillion", "undecillion", "Duodecillion", "Tredecillion", "quattuordecillion", "Quinquadecillion", "Sexdecillion", "Septendecillion", "Octodecillion", "Novendecillion", "vigintillion", "unvigintillion", "Duovigintillion", "Tresvigintillion", "Quattuorvigintillion", "Quinvigintillion", "Sesvigintillion", "Septemvigintillion", "Octovigintillion", "Novemvigintillion", "Trigintillion", "Untrigintillion", "Duotrigintillion", "Trestrigintillion", "Quattuortrigintillion", "Quintrigintillion", "Sestrigintillion", "Septentrigintillion", "Octotrigintillion", "Noventrigintillion", "Quadragintillion")
+        local Base = floor(log10(abs(N))/log10(1000))
+        local Suffix = Abbrev[min(Abbrev:count(), Base),string]
+        Base = min(Abbrev:count(), Base)
+        return Suffix ? round(N/1000^Base,3)+Suffix : ""+round(N,3):toString()
+    }
+    
+    function array paginate(Array:array, Page_size, Page_number) {
+        local Arr = array()
+        if(Page_number>ceil(Array:count()/Page_size)){return array()}
+        if(Array:count()<=0){return array()}
+        for(I=((Page_number - 1) * Page_size + 1),min(Page_number * Page_size,Array:count())){
+            Arr = Arr:add(array(Array[I,string]))
+        }
+        return Arr
+    }
+    
+    function color(Array:array){
+        EGP:egpColor(Array[1,number],Array[2,vector])
+    }
+    
+    #RIPPED FROM RATTLECAN CAUSE I NEED IT HEUHUHUEHUHE uwu
+    # simple addition
+    function addTask(Thread,Function:string,Arguments:array){
+        if(Thread == 1){ Tasks:pushTable(table(Function,Arguments)), TaskClk = 1 }
+        elseif(Thread == 2){ Tasks2:pushTable(table(Function,Arguments)), TaskClk = 2 }
+        elseif(Thread == 3){ Tasks3:pushTable(table(Function,Arguments)), TaskClk = 3 }
+        elseif(Thread == 4){ Tasks4:pushTable(table(Function,Arguments)), TaskClk = 4 }
+    }
+    function addTask(Thread,Function:string){ addTask(Thread,Function,array()) }
+    
+    # delayed variant
+    function addTask(Thread,Function:string,Arguments:array,Delay){
+        local ID = Function + "_" + round(curtime() + randint(1,9999)) # hopefully works
+        if(Thread == 1){ TaskDelayed[ID,table] = table(Function,Arguments,Delay) }
+        elseif(Thread == 2){ Task2Delayed[ID,table] = table(Function,Arguments,Delay) }
+        elseif(Thread == 3){ Task3Delayed[ID,table] = table(Function,Arguments,Delay) }
+        elseif(Thread == 4){ Task4Delayed[ID,table] = table(Function,Arguments,Delay) }
+        timer(ID,Delay)
+    }
+    function addTask(Thread,Function:string,Delay){ addTask(Thread,Function,array(),Delay) }
+    
+    function wirelink:indexSelect(Index){
+        if(CurrentPaginatedIndex != Index){
+            color(array(CurrentPaginatedIndex,vec(0,171,197)))
+            if(CurrentPaginatedIndex == 11){color(array(11*11,vec(0,171,197)))}
+        }
+        if(Index == 26 | Index == 29){
+            addTask(1,"color",array(Index,vec(105,189,210)),300)
+            addTask(2,"color",array(Index+1,vec(255)),300)
+            addTask(3,"color",array(Index+2,vec(255)),300)
+            color(array(Index,This:egpColor(Index)*0.7))
+            color(array(Index+1,This:egpColor(Index)*0.8))
+            color(array(Index+2,This:egpColor(Index)*0.8))
+        }elseif(Index == 11){
+            color(array(Index,vec(105,189,210)))
+            color(array(Index*Index,vec(105,189,210)))
+            entity():soundPlay(0,0,"ui/panel_open.wav")
+        }else{
+            color(array(Index,vec(105,189,210)))
+            entity():soundPlay(0,0,"ui/panel_open.wav")
+        }
+    }
+    
+    function void wirelink:updatePage(Num,Pages,Arr:array){
+        local Pagination = paginate(ArrForm,8,CurrentPage)
+        if(CurrentReportingNumber != ""){
+            CurrentReportingNumber = Pagination[CurrentPaginatedIndex-3,string]
+            if(CurrentReportingNumber == ""){
+                CurrentPaginatedIndex = 0
+                printIt("Unselected")
+            }else{
+                This:indexSelect(CurrentPaginatedIndex)
+                printIt("Selected "+CurrentReportingNumber)
+            }
+        }
+        
+        This:egpSetText(25, CompanyName)
+        This:egpColor(25, vec(255,255,255))
+        This:egpSetText(35, "Page "+Num:toString()+" of "+Pages)
+        This:egpColor(35, vec(255))
+        This:egpSetText(36, "("+NewFormat[CompanyName,table]:count()+") Units Found")
+        This:egpColor(36, vec(255))
+        local Total = 0
+        foreach(K,V:table = NewFormat[CompanyName,table]){
+            Total += V["DrivenMiles",number]
+        }
+        This:egpSetText(37, "Company Mileage ("+form(Total)+")")
+        This:egpColor(37, vec(255))
+        for(I = 1, 8){
+            if(I <= Arr:count()){
+                This:egpSetText(39+(I*3),Arr[I,string])
+                This:egpColor(39+(I*3), vec(255))
+                This:egpSetText(40+(I*3), round(NewFormat[CompanyName,table][Arr[I,string],table]["Fuel",number],2):toString())
+                This:egpColor(40+(I*3), vec(255))
+                This:egpSetText(41+(I*3), round(NewFormat[CompanyName,table][Arr[I,string],table]["DrivenMiles",number],2):toString())
+                This:egpColor(41+(I*3), vec(255))
+            }else{
+                This:egpColor(39+(I*3), vec(0,171,197))
+                This:egpColor(40+(I*3), vec(0,171,197))
+                This:egpColor(41+(I*3), vec(0,171,197))
+            }
+        }
+    }
+    
+    function number wirelink:isPressed(Index, User:entity){
+        if(EGPFilter){ if(User:steamID64() != owner():steamID64()) {return 0} }
+        local ID = This:entity():id():toString()
+        local HitPos = This:egpCursor(User)
+        local InRange = inrange(HitPos, This:egpPos(Index), This:egpPos(Index) + This:egpSize(Index)) 
+        
+        if(InRange){
+            This:indexSelect(Index)
+        }
+        
+        return InRange
+    }
+    
+    function can(Arr:array){
+        Can = Arr[1,number]
+    }
+    
+    function color(Array:array){
+        EGP:egpColor(Array[1,number],Array[2,vector])
+    }
+    
+    function number save(Filename:string,Table:table){
+        if(Filename != ""){
+            if(fileCanWrite()){
+                local Table2 = table()
+                Table2[Filename,table] = Table[CompanyName,table]
+                local SaveString = ">e2shared/fuel/" + Filename + ".txt"
+                local FormatString = vonEncode(Table2)
+                Format = Table2
+                NewFormat = Table2
+                fileWrite(SaveString, FormatString)
+                return 1
+            }else{
+                return 0
+            }
+        }else{
+            if(fileCanWrite()){
+                printIt("Error! No Company Name! Saving as Unknown.txt!")
+                local Table2 = table()
+                Table2[Filename,table] = Table[CompanyName,table]
+                local SaveString = ">e2shared/fuel/Unknown.txt"
+                local FormatString = vonEncode(Table)
+                Format = Table2
+                NewFormat = Table2
+                fileWrite(SaveString, FormatString)
+                return 1
+            }else{
+                return 0
+            }
+        }
+    }
+    
+    function load(Filename:string){
+        fileLoad(">e2shared/fuel/" + Filename + ".txt")
+    }
+    
+    function init(){
+        ArrForm = array()
+        Can = 0
+        local C = 0
+
+        foreach(K,V:table = NewFormat[CompanyName,table]){
+            C++
+            ArrForm = ArrForm:add(array(K))
+        }
+
+        if(C>=NewFormat[CompanyName,table]:count()){
+            Ready = 1
+            local Pagination = paginate(ArrForm,8,CurrentPage)
+            EGP:updatePage(CurrentPage,ceil(NewFormat[CompanyName,table]:count()/8),Pagination)
+        }
+    }
+    
+    CurrentPage = 1
+    
+    if(!Loaded & fileCanLoad()){
+        load(CompanyName)
+    }
+    
+    timer("task",50)
+    timer("task2",100)
+    timer("task3",150)
+    timer("task4",200)
+}
+
+if(fileClk()){
+    local Status = fileStatus()
+    switch(Status){
+        case _FILE_UNKNOWN, case _FILE_TIMEOUT, case _FILE_404, _FILE_TRANSFER_ERROR,
+            CompanyName = OldCompanyName
+            if(Format[CompanyName,table]:count() > 0){
+                Loaded = 1
+            }
+            printIt("File Unknown, Loading Failed")
+            entity():soundPlay(0,0,"ui/system_message_alert.wav")
+        break
+    }
+    if(fileLoaded()){
+        Format = vonDecodeTable(fileRead())
+        NewFormat = vonDecodeTable(fileRead())
+        
+        if(Format:count() == 0){
+            if(vonError()){
+                printIt("Data load failed, vON decoding error! Check for NaNs in your file.")
+            }else{
+                printIt("Data load failed, selected file is empty!")
+            }
+        }else{
+            if(Format[CompanyName,table]:count() > 0){
+                Loaded = 1
+                entity():soundPlay(0,0,"ui/positive_ring.wav")
+                EGP:initPage(1)
+                printIt("File Loaded Succesfully")
+            }else{
+                entity():soundPlay(0,0,"ui/helpful_event_1.wav")
+                printIt("No company data! Pay careful attention to case sensitivity. as the CompanyName is case Sensitive!")
+            }
+        }
+    }
+}
+
+if(changed(Loaded) & Loaded){
+    init()
+}
+
+if(Ready & !Can & Loaded & User) {
+    Can = 1
+    addTask(4,"can",array(0),350)
+    local Pages = ceil(NewFormat[CompanyName,table]:count()/8)
+    
+    if(EGP:isPressed(26, User)){
+        if(CurrentPage<=1){
+            CurrentPage = Pages
+        }else{
+            CurrentPage--
+        }
+        local Pagination = paginate(ArrForm,8,CurrentPage)
+        entity():soundPlay(0,0,"ui/ui_book_close.wav")
+        EGP:updatePage(CurrentPage,Pages,Pagination)
+    }elseif(EGP:isPressed(29, User)){
+        if(CurrentPage>=Pages){
+            CurrentPage = 1
+        }else{
+            CurrentPage++
+        }
+        local Pagination = paginate(ArrForm,8,CurrentPage)
+        entity():soundPlay(0,0,"ui/ui_book_close.wav")
+        EGP:updatePage(CurrentPage,Pages,Pagination)
+    }else{
+        local Pagination = paginate(ArrForm,8,CurrentPage)
+        
+        for(I = 4, Pagination:count()+3){
+            if (EGP:isPressed(I, User)) {
+                if(CurrentPaginatedIndex == I){
+                    EGP:egpColor(CurrentPaginatedIndex, vec(0, 171, 197))
+                        
+                    if (CurrentPaginatedIndex == 11){
+                        EGP:egpColor(CurrentPaginatedIndex * CurrentPaginatedIndex, vec(0, 171, 197))
+                    }
+                    CurrentReportingNumber = ""
+                    CurrentPaginatedIndex = 0
+                    
+                    entity():soundPlay(0,0,"ui/panel_close.wav")
+                    
+                    printIt("Unselected "+CurrentReportingNumber)
+                }else{
+                    CurrentReportingNumber = Pagination[I-3,string]
+                    CurrentPaginatedIndex = I
+                    
+                    if(!PaginationQ){
+                        PaginationQ = 1
+                        printIt("Selected "+CurrentReportingNumber+" do .fuel [NUMBER] or .miles [NUMBER] to change fuel levels or mileage")
+                    }else{
+                        printIt("Selected "+CurrentReportingNumber)
+                    }
+                    
+                    EGP:indexSelect(I)
+                }
+                break
+            }
+        }
+    }
+}
+
+if(!clk("task")){ # task loops, and delays (has to run at the bottom)
+    local ClkName = clkName()
+    if(TaskLoops:exists(ClkName)){
+        local NumTaskLoops = TaskLoops:count()
+        addTask(1,TaskLoops[ClkName,table][1,string],TaskLoops[ClkName,table][2,array])
+        timer(ClkName,TaskLoops[ClkName,table][3,number])
+    }
+    elseif(TaskDelayed:exists(ClkName)){
+        addTask(1,TaskDelayed[ClkName,table][1,string],TaskDelayed[ClkName,table][2,array])
+        TaskDelayed:remove(ClkName)
+    }
+    elseif(Task2Delayed:exists(ClkName)){
+        addTask(2,Task2Delayed[ClkName,table][1,string],Task2Delayed[ClkName,table][2,array])
+        Task2Delayed:remove(ClkName)
+    }
+    elseif(Task3Delayed:exists(ClkName)){
+        addTask(3,Task3Delayed[ClkName,table][1,string],Task3Delayed[ClkName,table][2,array])
+        Task3Delayed:remove(ClkName)
+    }
+    elseif(Task4Delayed:exists(ClkName)){
+        addTask(4,Task4Delayed[ClkName,table][1,string],Task4Delayed[ClkName,table][2,array])
+        Task3Delayed:remove(ClkName)
+    }
+}
+if(clk("task") | clk("task2") | clk("task3") | clk("task4") | TaskClk != 0){ # tasks (4 threads) omg 4 threads? is this gonna be a thread ripper? #RIPPED FROM RATTLECAN HUHAHAUHAUHAH
+    
+    local Thread = 0
+    if(TaskClk){ Thread = TaskClk == 1 ? 1 : TaskClk == 2 ? 2 : TaskClk == 3 ? 3 : 4
+    }else{ Thread = clk("task") ? 1 : clk("task2") ? 2 : clk("task3") ? 3 : 4 }
+    local CurTasks = Thread == 1 ? Tasks : Thread == 2 ? Tasks2 : Thread == 3 ? Tasks3 : Tasks4
+    local NumTasks = CurTasks:count()
+    
+    # speed regulation
+    Ops = entity():ops()
+    Weight = Ops/(softQuota()/2)
+    Task_Speed = clamp(round((200*Weight)+(10*(1-Weight))),100,500)
+    
+    if(Weight < 0.5 & NumTasks > 4){
+        while(perf((1-Weight)*100)){
+        #while(perf(50)){
+            NumTasks = CurTasks:count() # have to do this again due to the while loop
+            if(NumTasks != 0){
+                local ID = CurTasks:keys()[1,number]
+                local CurTask = CurTasks[ID,table]
+                local Function = CurTask[1,string]
+                local Args = CurTask[2,array]
+                if(Function != ""){
+                    if(Args:count() == 0){ Function() }else{ Function(Args) }
+                }else{ print(_HUD_PRINTCONSOLE, "Averted running empty task!") }
+                CurTasks:remove(ID)
+            }else{
+                break # break the loop so we're not just running a while loop for no reason
+            }
+        }
+    }elseif(NumTasks != 0){ # slow if too hot
+        local ID = CurTasks:keys()[1,number]
+        local CurTask = CurTasks[ID,table]
+        local Function = CurTask[1,string]
+        local Args = CurTask[2,array]
+        if(Function != ""){
+            if(Args:count() == 0){ Function() }else{ Function(Args) }
+        }else{ print(_HUD_PRINTCONSOLE, "Averted running empty task!") }
+        CurTasks:remove(ID)
+    }
+    
+    # restart if required
+    if(Tasks:count() != 0 & Thread == 1){ timer("task",Task_Speed) }
+    if(Tasks2:count() != 0 & Thread == 2){ timer("task2",Task_Speed) }
+    if(Tasks3:count() != 0 & Thread == 3){ timer("task3",Task_Speed) }
+    if(Tasks4:count() != 0 & Thread == 4){ timer("task4",Task_Speed) }
+    TaskClk = 0
+}
+
+if(chatClk(owner())){
+    local ImGonna = owner():lastSaid():trim()
+    local Explode = ImGonna:explode(" ")
+    local Command = Explode[1,string]:lower()
+    
+    if(CurrentReportingNumber != ""){
+        if(Command == ".fuel" | Command == ".miles"){
+            hideChat(1)
+            local Attribute = Command == ".fuel" ? "Fuel" : "DrivenMiles"
+            local Value = max(Explode[2,string]:toNumber(),0)
+            NewFormat[CompanyName,table][CurrentReportingNumber,table][Attribute,number] = Value
+            local Pagination = paginate(ArrForm,8,CurrentPage)
+            local Pages = ceil(NewFormat[CompanyName,table]:count()/8)
+            EGP:updatePage(CurrentPage, Pages, Pagination)
+            entity():soundPlay(0,0,"ui/quest_status_tick_novice.wav")
+            printIt(Attribute+" set to "+Value+" "+(Attribute == "Fuel" ? "Gallons." : "Miles.")+" to reset do .reset or .default!")
+        }elseif(Command == ".number" | Command == ".n"){
+            hideChat(1)
+            local Value = Explode[2,string]
+            local Found = ArrForm:concat(" "):find(Value)
+            local OldTable = NewFormat[CompanyName,table][CurrentReportingNumber,table]
+            if(NewFormat[CompanyName,table]:remove(CurrentReportingNumber) & !Found){
+                NewFormat[CompanyName,table][Value,table] = OldTable
+                init()
+                entity():soundPlay(0,0,"ui/select.wav")
+                printIt("Changed Reporting number to "+Value)
+            }else{
+                entity():soundPlay(0,0,"buttons/blip2.wav")
+                if(Found){
+                    printIt("There is already an instance of that reporting number!")
+                }else{
+                    printIt("Unable to edit Loco Reporting Number!")
+                }
+            }
+        }
+    }
+    
+    if(Command == ".find"){
+        hideChat(1)
+        local RN = Explode[2,string]
+        if(RN != ""){
+            local Index = 0
+            for(I = 1, ArrForm:count()){
+                if(RN == ArrForm[I,string]){
+                    Index = I
+                    break
+                }
+                Index = -1
+            }
+            
+            if(Index == -1) {
+                printIt("Cannot Find "+RN)
+                entity():soundPlay(0,0,"buttons/blip2.wav")
+            }else{
+                local IB = (8 - (ceil(Index/8)*8-Index)) + 3
+                
+                EGP:indexSelect(IB)
+                
+                CurrentPage = ceil(Index/8)
+                CurrentPaginatedIndex = IB
+                CurrentReportingNumber = RN
+                
+                local Pagination = paginate(ArrForm,8,CurrentPage)
+                local Pages = ceil(NewFormat[CompanyName,table]:count()/8)
+                EGP:updatePage(CurrentPage, Pages, Pagination)
+                entity():soundPlay(0,0,"ui/panel_open.wav")
+                #print("Found Reporting Number ",RN," at Page ",CurrentPage)
+            }
+        }
+    }elseif(Command == ".add"){
+        hideChat(1)
+        local RN = Explode[2,string]
+        if(RN != ""){
+            RN
+            local Found = ArrForm:concat(" "):find(RN)
+            if(Found){
+                entity():soundPlay(0,0,"buttons/blip2.wav")
+                printIt("There is already an instance of that reporting number!")
+            }else{
+                local Fuel = Explode[3,string]:toNumber()
+                local Miles = Explode[4,string]:toNumber()
+                local Data = table()
+                Data["Fuel",number] = Fuel
+                Data["DrivenMiles",number] = Miles
+                NewFormat[CompanyName,table][RN,table] = Data
+                init()
+                entity():soundPlay(0,0,"ui/select.wav")
+                printIt("Added "+RN)
+            }
+        }
+    }elseif(Command == ".delete"){
+        hideChat(1)
+        local RN = Explode[2,string]
+        if(RN != ""){
+            if(NewFormat[CompanyName,table]:remove(RN)){
+                entity():soundPlay(0,0,"buttons/blip2.wav")
+                init()
+                printIt("Deleted "+RN)
+            }else{
+                entity():soundPlay(0,0,"buttons/blip2.wav")
+                printIt("Unable to delete "+RN)
+            }
+        }elseif(CurrentReportingNumber != ""){
+            if(NewFormat[CompanyName,table]:remove(CurrentReportingNumber)){
+                entity():soundPlay(0,0,"buttons/blip2.wav")
+                printIt("Deleted "+CurrentReportingNumber)
+                init()
+            }else{
+                entity():soundPlay(0,0,"buttons/blip2.wav")
+                printIt("Unable to delete "+CurrentReportingNumber)
+            }
+        }
+    }elseif(Command == ".default" | Command == ".reset"){
+        hideChat(1)
+        NewFormat = vonDecodeTable(fileRead())
+        local Pagination = paginate(ArrForm, 8, CurrentPage)
+        local Pages = ceil(NewFormat[CompanyName,table]:count() / 8)
+        EGP:updatePage(CurrentPage, Pages, Pagination)
+        init()
+        entity():soundPlay(0,0,"buttons/blip2.wav")
+        printIt("Data has been reset to default!")
+    }elseif(Command == ".save"){
+        hideChat(1)
+        Explode:remove(1)
+        local Filename = Explode[2,string] ? Explode:concat(" ") : CompanyName
+        if(save(Filename, NewFormat)){
+            local Pagination = paginate(ArrForm, 8, CurrentPage)
+            local Pages = ceil(NewFormat[CompanyName,table]:count() / 8)
+            EGP:updatePage(CurrentPage, Pages, Pagination)
+            entity():soundPlay(0,0,"ui/select.wav")
+            printIt("File Successfully saved!")
+        }else{
+            printIt("File has failed to save!")
+            entity():soundPlay(0,0,"ui/beep_error01.wav")
+        }
+    }elseif(Explode[1,string]:lower() == ".load"){
+        hideChat(1)
+        Explode:remove(1)
+        local Filename = (Explode:concat(" ") != "") ? Explode:concat(" ") : ""
+        if(Filename != "" & fileCanLoad()){
+            Loaded = 0
+            Ready = 0
+            OldCompanyName = CompanyName
+            CompanyName = Filename
+            load(CompanyName)
+            entity():soundPlay(0,0,"ui/quest_decode.wav")
+            printIt("Loading "+Filename)
+        }else{
+            printIt("Unable to load file "+Filename)
+            entity():soundPlay(0,0,"ui/beep_error01.wav")
+        }
+    }elseif(Explode[1,string]:lower() == ".print"){
+        hideChat(1)
+        local Value = clamp(Explode[2,string]:toNumber(),0,1)
+        Print = Value
+        if(Value){
+            print("Enabled printing to chatbox!")
+        }else{
+            print("Disabled printing to chatbox!")
+        }
+    }
+}
