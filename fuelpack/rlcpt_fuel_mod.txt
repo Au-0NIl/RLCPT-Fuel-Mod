@@ -11,6 +11,7 @@
 @persist Reverser ES1 ES2 EngineSpeed1 EngineSpeed2 EngineNotch1 EngineNotch2 Primed1 PrimerSet1 NumEngineNotches CurNotches:array FuelSaverMode FuelSaverDelay Interrupted1 Interrupted2
 @persist ABlendQ1 ABlendQ2 RevDirection1 RevDirection2 TimeStamp1 TimeStamp2 Dur1 Dur2 ABQ1 TQ1 TQ2 NameQ DPM
 @persist SoundMultiplier Version:string O:entity
+@persist [CtlTableCtrlStand CtlTable]:table
 @persist Format:table [CompanyName ReportingNumber]:string Save DrivenMiles DrivenKilometers
 @trigger none
 @model models/parts/flumz/fuelline.mdl
