@@ -153,7 +153,7 @@ if(first()){
     
     O = owner()
     
-    CurName = array("RLCPT Fuel Mod [BETA]","Made By NIl","FuelCapacity","Fuel Per Hour","RPM","Accurate? Maybe? a lil bit nah")
+    CurName = array("RLCPT Fuel Mod [Version]","Made By NIl","FuelCapacity","Fuel Per Hour","RPM","Accurate? Maybe? a lil bit nah")
     VerifyL = array("Fuel Tank",0,0,0)
     
     FCR = (DPM ? Horsepower/2 : Horsepower)*(FuelEfficiencyFactor/100)
@@ -565,7 +565,13 @@ if(first()){
     
     VerifyL[2,number] = FuelLine
     
-    timer("timer",1)
+    if(!NumEngineNotches){
+        print("No Engine Notches! check engine config EngineBehavior if they are all 3! or check if NumEngineNotches is 0!")
+        runOnFile(0)
+        stopAllTimers()
+    }else{
+        timer("timer",1)
+    }
 }
 
 if(clk("timer")){
@@ -812,7 +818,7 @@ if(clk("timer")){
         
         if(!NameQ){
             NameQ = 1
-            addName(0,"RLCPT Fuel Mod [BETA "+Version+"]")
+            addName(0,"RLCPT Fuel Mod ["+Version+"]")
             addName(1,"Made by NIl")
             addName(2,"Fuel: "+Gallons+" gal")
             addName(3,"FuelCapacity: "+FuelCapacity+" gal")
@@ -839,7 +845,7 @@ if(clk("timer")){
         timer("timer",100) # do not change if you want pumping flow rate to be accurate
     }else{
         local Arr = FuelLineIn["Name",array]
-        Arr[0,string] = "RLCPT Fuel Mod [BETA "+Version+"] (Inlet)"
+        Arr[0,string] = "RLCPT Fuel Mod ["+Version+"] (Inlet)"
         Arr[6,string] = "Inlet? inlet INLET INLLLETTTTT YAY11!!11!!1!!!!"
         
         setArrayName(Arr)
