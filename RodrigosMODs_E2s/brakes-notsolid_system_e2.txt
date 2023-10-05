@@ -13,7 +13,7 @@
 
   # Both systems works with any kind of consist since it detects every constrained entity from the Baseplate (Base) and applies the material or the not solid on everything
 
-  # Inputs are self explanatory, Base:entity to the baseplate or train model base, Superice to a pod controller input (for example: Space) and NotSolid to a toggleable button or Keyinput
+  # Inputs are self explanatory, Base:entity to the baseplate or train model base, Brake to a pod controller input (for example: Space) and NotSolid to a toggleable button or Keyinput
 
   # I'll probably add more features on this, but no ideas for now, also i want to make this E2 most optimized possible. Have fun 
  
@@ -42,14 +42,7 @@
             Ents[N,entity]:propPhysicalMaterial(Material)
         }
     }
-   
-    function void hardbrake() {
-        Base:propPhysicalMaterial("metal")
-        for(N=1,Ents:count()){
-            Ents[N,entity]:propPhysicalMaterial("metal")
-        }
-    }
-
+  
     function void notsolid(Num) { 
         Base:propNotSolid(Num) 
         for(N=1,Ents:count()){ 
