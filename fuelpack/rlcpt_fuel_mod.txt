@@ -831,7 +831,7 @@ if(clk("timer")){
                 addName(4,"Gallons consumed per hour: "+round((FCR/1000) * (RPM1*(RPM1/IdleRPM)^LN),2)+" gal")
                 addName(5,"RPM simulator: "+RPM1)
             }
-            addName(6,"The Web UPDATE!!!!!!!!!!!!!!!!!!!!1!!!111!!!!1!1111!11!!!1")
+            addName(6,"RELEASED TO THE WILD!")
             
             setArrayName(CurName)
             timer("ResetNameQ",1250)
