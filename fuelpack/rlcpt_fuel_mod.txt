@@ -49,7 +49,7 @@ if(duped()){
 
 if(first()){
     
-    Version = "1.0.0"
+    Version = "1.0.1"
     
     #[========================================================|
     |                                                         |
@@ -78,10 +78,11 @@ if(first()){
     |       None                                                                                                              |
     |                                                                                                                         |
     |=========================================================================================================================|
-    |    Version = 1.0.0                                                                                                      |
+    |    Version = 1.0.1                                                                                                      |
     |                                                                                                                         |
     |    Fixed:                                                                                                               |
-    |       HOPEFULLY Fixed when setting this fuel e2 up for the first time load meter doesnt go UP/DOWN when notching        |
+    |       HOPEFULLY Fixed when setting this fuel e2 up for the first time load meter doesnt go UP/DOWN when notching(REALLY)|
+    |       Fixed when RESETING THE CHIP and when CtlTable and CtlTableCtrlStand is WIRED loadmeter does not go up or down    |
     |                                                                                                                         |
     #=========================================================================================================================#
         
@@ -168,7 +169,7 @@ if(first()){
     LN = max(1,4-ceil(FuelEfficiencyFactor/100))
     
     Format = table()
-    
+
     function number save(Filename:string,RN:string,Table:table){
         if(Filename != ""){
             if(fileCanWrite()){
@@ -862,28 +863,35 @@ if(clk("ResetNameQ")){
     NameQ = 0
 }
 
-if(!FuelLine){
-    CtlTable["SetReverser",number] = CtlTableCtrlStand["SetReverser",number]
-    CtlTable["SetThrottle",number] = SetThrottle
-    CtlTable["SetDynamics",number] = SetDynamics
-    CtlTable["SetSelector",number] = CtlTableCtrlStand["SetSelector",number]
-    CtlTable["SetBrakeNotch",number] = CtlTableCtrlStand["SetBrakeNotch",number]
-    CtlTable["SetEqualRes",number] = CtlTableCtrlStand["SetEqualRes",number]
-    CtlTable["SetHolding",number] = CtlTableCtrlStand["SetHolding",number]
-    CtlTable["Overcharge",number] = CtlTableCtrlStand["Overcharge",number]
-    CtlTable["FRC",number] = CtlTableCtrlStand["FRC",number]
-    #CtlTable["SetLocoBrakeNotch",number] = SetLocoBrakeNotch
-    CtlTable["SetLocoBrakePressure",number] = CtlTableCtrlStand["SetLocoBrakePressure",number]
-    CtlTable["SetBleeding",number] = CtlTableCtrlStand["SetBleeding",number]
-    CtlTable["SetHumpMultiplier",number] = CtlTableCtrlStand["SetHumpMultiplier",number]
-    CtlTable["SetFeedPressure",number] = CtlTableCtrlStand["SetFeedPressure",number]
-    
-    CtlTable["EmergencyBrake",number] = CtlTableCtrlStand["EmergencyBrake",number]
-    CtlTable["HandBrake",number] = CtlTableCtrlStand["HandBrake",number]
-    CtlTable["Sander",number] = CtlTableCtrlStand["Sander",number]
-    CtlTable["CS_Version",string] = CtlTableCtrlStand["CS_Version",string]
-    CtlTable["CTL_Version",string] = CtlTableCtrlStand["CTL_Version",string]
-    
+CtlTable["AirBrakeMode",number] = CtlTableCtrlStand["AirBrakeMode",number]
+CtlTable["InitialReduction",number] = CtlTableCtrlStand["InitialReduction",number]
+CtlTable["NotchedThrottle",number] = CtlTableCtrlStand["NotchedThrottle",number]
+CtlTable["NumThrottleNotches",number] = CtlTableCtrlStand["NumThrottleNotches",number]
+CtlTable["NotchedDynamics",number] = CtlTableCtrlStand["NotchedDynamics",number]
+CtlTable["TransitionMode",number] = CtlTableCtrlStand["TransitionMode",number]
+CtlTable["TransitionControlType",number] = CtlTableCtrlStand["TransitionControlType",number]
+CtlTable["CS_Version",string] = CtlTableCtrlStand["CS_Version",string]
+CtlTable["CTL_Version",string] = CtlTableCtrlStand["CTL_Version",string]
+
+CtlTable["SetReverser",number] = CtlTableCtrlStand["SetReverser",number]
+CtlTable["SetThrottle",number] = CtlTableCtrlStand["SetThrottle",number]
+CtlTable["SetDynamics",number] = CtlTableCtrlStand["SetDynamics",number]
+CtlTable["SetSelector",number] = CtlTableCtrlStand["SetSelector",number]
+CtlTable["SetBrakeNotch",number] = CtlTableCtrlStand["SetBrakeNotch",number]
+CtlTable["SetEqualRes",number] = CtlTableCtrlStand["SetEqualRes",number]
+CtlTable["SetHolding",number] = CtlTableCtrlStand["SetHolding",number]
+CtlTable["Overcharge",number] = CtlTableCtrlStand["Overcharge",number]
+CtlTable["FRC",number] = CtlTableCtrlStand["FRC",number]
+CtlTable["SetLocoBrakePressure",number] = CtlTableCtrlStand["SetLocoBrakePressure",number]
+CtlTable["SetBleeding",number] = CtlTableCtrlStand["SetBleeding",number]
+CtlTable["SetHumpMultiplier",number] = CtlTableCtrlStand["SetHumpMultiplier",number]
+CtlTable["SetFeedPressure",number] = CtlTableCtrlStand["SetFeedPressure",number]
+
+CtlTable["EmergencyBrake",number] = CtlTableCtrlStand["EmergencyBrake",number]
+CtlTable["HandBrake",number] = CtlTableCtrlStand["HandBrake",number]
+CtlTable["Sander",number] = CtlTableCtrlStand["Sander",number]
+
+if(!FuelLine){    
     if(clk("Up1")){
         ES1++
         #huhahuha
@@ -1005,7 +1013,7 @@ if(Save & !FuelLine){
                 }else{
                     Gallons = Format[CompanyName,table][ReportingNumber,table]["Fuel",number] > FuelCapacity ? FuelCapacity : Format[CompanyName,table][ReportingNumber,table]["Fuel",number]
                     DrivenMiles = Format[CompanyName,table][ReportingNumber,table]["DrivenMiles",number]
-                    DrivenKilometers = DrivenMiles*1.60934  
+                    DrivenKilometers = DrivenMiles*1.60934
                 }
             }
         }
