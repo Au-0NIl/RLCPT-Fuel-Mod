@@ -1,9 +1,9 @@
 @name FBD Fender Bender Defender CMB
-@inputs Enable Active MPH Base:entity
+@inputs Enable Active MPH
 @outputs EmBrake CycleTime TruckCount Running Analyzing RTD_Counter Enable_True PCS_Open
 @persist Trucks:array TruckTypes:array W:entity O:entity AUTOPARENT SpeedThreshold Index RTD FreezeOnDerail Running Initialized Interval Derail MarkerColor:vector
 @persist TruckModels:array SpeedQ Paths:table Analyzing TC Consist:array AI LazyMode Disabled
-@persist [R1E R1P R1A]:array [R2E R2P R2A]:array [R3E R3P R3A]:array [R4E R4P R4A]:array [R5E R5P R5A]:array [R6E R6P R6A]:array [R7E R7P R7A]:array [R8E R8P R8A]:array [R9E R9P R9A]:array [R10E R10P R10A]:array RTD_Counter RTD_Interval 
+@persist Sound:string [R1E R1P R1A]:array [R2E R2P R2A]:array [R3E R3P R3A]:array [R4E R4P R4A]:array [R5E R5P R5A]:array [R6E R6P R6A]:array [R7E R7P R7A]:array [R8E R8P R8A]:array [R9E R9P R9A]:array [R10E R10P R10A]:array RTD_Counter RTD_Interval Hitbox Gauge
 @trigger Enable Active
 @model models/Items/combine_rifle_ammo01.mdl
 if(first()|duped()){
@@ -42,20 +42,17 @@ if(first()|duped()){
     
     List of commands:
     
-    .r (number). For example .r1, .r2, .r3, .r4 until you reach .r10 which is the last rerail command (i switched from .rerail to .r so its faster for rerailing and can prevent some accidents)
+    .r (rerail). For example .r1, .r2, .r3, .r4 until you reach .r10 which is the last rerail command (i switched from .rerail to .r so its faster for rerailing and can prevent some accidents)
     .u (unfreeze). This command just unfreeze the entire consist, nothing special
-    
-    List of customization in the e2:
-    
-    in Line: 361, 362, 366, 367 you can find some 27 and -27 values, that's the track gauge. 27 is for RSG and 38 is for PHX
-    in Line: 383, between the "" in the () you can add a sound when you derail
-    in Line: 360, there's a 1.7 value on the right, i use 1.7 so FBD doesn't triggers a lot of false derailments, but sometimes the axles can be off and FBD doesn't triggers, default value is 1
-    And lastly, if you have bogie mismatch errors or the fbd doesn't detects a bogie, in line 78, add the model of the bogie / axle to that list.
-    
+   
     this is the end, with this e2 you can live, love and lie
     Goodbye and enjoy.
     
     ]#
+    
+    Gauge = 27 #This is the gauge where FBD will work, 27 is for TP3 and 38 for PHX
+    Hitbox = 1 #This is the width hitbox derailment detection area, default is 1 but in some axles or bogies you'll need to use a higher value like 1.7 (in my case with double_30 axles)
+    Sound = "zombie_tunnel.crash" #This is the sound that plays when the E2 detects a derailment
     
     RTD = 1   #Enables Red Tape Defender (RTD) Recording. At any time, you can type ".rerail" in chat and it will place your entire train back on the rails!
     FreezeOnDerail = 0  #"Traditional" FBD functionality. When it detects a derailment, it will freeze the entire train.
@@ -215,7 +212,7 @@ if(first()|duped()){
     Disabled = 0
     
     if(first()){
-        print("[FBD] Welcome to Magnum's Fender Bender Defender!\nPlease read the instructions before proceeding.")
+        print("[FBD] Welcome to Magnum's Fender Bender Defender!\nPlease read the instructions before proceeding.\nIf the E2 doesn't detects your engine or spams truck mismatch, respawn the engine with the updated E2")
         if(AUTOPARENT){
             #E:setMaterial("models/effects/vol_light001")
             local Welded = E:isWeldedTo()
@@ -356,16 +353,16 @@ if(Enable_True){
         if(Specimen:isValidPhysics()){
             #Y Longer: Mag Style (0), X Longer: Grove Style (1)
             local Type = TruckTypes[Index,number]
-            local LoPoint = Specimen:boxMin()*(Type ? vec(1,0,1) : vec(0,1,1)) 
+            local LoPoint = Specimen:boxMin()*(Type ? vec(1,0,1) : vec(0,1,(Hitbox))) 
             if(Type){
                 #GSG
-                Corner1 = LoPoint + vec(0,-27,1)
-                Corner2 = LoPoint*vec(-1,0,1) + vec(0,27,1)
+                Corner1 = LoPoint + vec(0,(Gauge)*-1,1)
+                Corner2 = LoPoint*vec(-1,0,1) + vec(0,(Gauge),1)
                 Dir = Specimen:forward() + Specimen:right()
             }else{
                 #Mag
-                Corner1 = LoPoint + vec(27,0,1)
-                Corner2 = LoPoint*vec(-1,0,1) + vec(-27,0,1)
+                Corner1 = LoPoint + vec((Gauge),0,1)
+                Corner2 = LoPoint*vec(-1,0,1) + vec((Gauge)*-1,0,1)
                 Dir = Specimen:forward() - Specimen:right()
             }
             rangerFilter(Specimen)
@@ -380,7 +377,7 @@ if(Enable_True){
                 EmBrake = 1
                 PCS_Open = 1
                 print("[FBD] Derailment Detected at " + toString(round(MPH,1)) + " MPH!")
-                O:soundPlay(0,5,"")
+                O:soundPlay(0,5,(Sound))
                 holoCreate(0,Specimen:pos(),vec(1.125),Specimen:angles(),MarkerColor,Specimen:model())
                 holoParent(0,Specimen)
                 holoAlpha(0,100)
