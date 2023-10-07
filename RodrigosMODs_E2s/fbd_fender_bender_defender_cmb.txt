@@ -356,13 +356,13 @@ if(Enable_True){
             local LoPoint = Specimen:boxMin()*(Type ? vec(1,0,1) : vec(0,1,(Hitbox))) 
             if(Type){
                 #GSG
-                Corner1 = LoPoint + vec(0,(Gauge)*-1,1)
-                Corner2 = LoPoint*vec(-1,0,1) + vec(0,(Gauge),1)
+                Corner1 = LoPoint + vec(0,(Gauge)*-1,0)
+                Corner2 = LoPoint*vec(-1,0,1) + vec(0,(Gauge),0)
                 Dir = Specimen:forward() + Specimen:right()
             }else{
                 #Mag
-                Corner1 = LoPoint + vec((Gauge),0,1)
-                Corner2 = LoPoint*vec(-1,0,1) + vec((Gauge)*-1,0,1)
+                Corner1 = LoPoint + vec((Gauge),0,0)
+                Corner2 = LoPoint*vec(-1,0,1) + vec((Gauge)*-1,0,0)
                 Dir = Specimen:forward() - Specimen:right()
             }
             rangerFilter(Specimen)
