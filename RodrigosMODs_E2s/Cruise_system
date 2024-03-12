@@ -1,0 +1,88 @@
+@name Cruise speed 
+@inputs Chassis:entity MPH 
+@outputs SL AP On:vector Apply:vector
+@persist Material:string
+@persist Force Mul X Y Z Cycle
+@trigger none
+
+#[
+
+- Made by RodrigosMOD -
+
+ This e2 may be public so imma add this text here xD!
+
+ Welcome to the cruise speed or speed cap system E2! 
+ This E2 is very simple, when you select your max speed by writing (.sc (MPH)), the chip will make a counter applyforce to prevent the engine go faster than that speed.
+ I made this chip so i can have cruise speed on OLC, PT1 or literally any vehicle
+  
+ Commands: 
+ .sl (desired MPH). Enables the cruise speed
+ .sld disables cruise speed (you can do just .cc too)
+
+ Wiring:
+ Chassis[ENTITY] goes to the base of the engine or the prop that will slow down the train (you can put it on the bogies but the chassis is more recommended)
+ MPH goes to MPH on a speedometer or to the PT1 / PT2 / OLC chip (i made it like this because PT2 and PT1 has diferent speed measuring (PT1 worldscale, PT2 playerscale. Difference of 33%)
+ 
+ Extra stuff:
+ SL is a output value that gives a "1" when the chip applies the counter applyforce.
+ if the chip doesn't works on certain engines, in line 58 and 59 there are two Chassis:right, they can be seen as Chassis:forward too. So, if the engine doesn't works with Chassis:right(),
+ change it to Chassis:forward(), if it doesn't with forward, change it to right again.
+ 
+ IMPORTANT: always remember that the counter applyforce isn't so strong, it is made for slowing down the engine, not stoping it! if you have a really powerful engine that uses OLC or PT1 and you see
+ that isn't slowing down, set it to notch 0 o throttle 0 and see if it really doesn't, if it doesn't change that Chassis: to forward or right.
+ if you decide to make the value stronger, change the variable below this:
+]#
+
+ CounterForce = 8 # The lower is this value, the stronger is the chip. Default is 8
+ 
+#This is it, chip that can may be useful for you or idk, enjoy!
+
+
+
+  if(first()|duped()){
+    Cycle = 100  
+    runOnChat(1)
+   }
+
+  if(chatClk(owner())){
+    LS = owner():lastSaid()
+    Command = owner():lastSaid():explode(" ")
+    Location = Command[2,string]
+    
+}
+        
+  if(Command[1,string]:lower() == ".sl"){
+    SL = Command[2,string]:toNumber()
+    print("Speed limit set to "+SL+" MPH!")
+    hideChat(1)
+  }elseif(Command[1,string]:lower() == ".sld"){
+    SL = Command[2,string]:toNumber()
+    print("Speed limit disabled!")
+    hideChat(1)
+   }
+
+  if(SL>0){
+    interval(Cycle)
+    if(MPH>SL){      
+        Right = -Chassis:vel():dot(-Chassis:right())
+        Chassis:applyForce((Right * Chassis:mass() * -Chassis:right()/CounterForce))
+        AP = 1
+        }else{
+        AP = 0
+    }
+   }
+
+  if(SL>1){
+    On = vec(0,255,0)
+   }
+    else{
+    On = vec(0,0,0)
+   }
+
+  if(AP>0){
+    Apply = vec(255,0,0)
+   } 
+ 
+  else{
+    Apply = vec(0,0,0)
+   }
