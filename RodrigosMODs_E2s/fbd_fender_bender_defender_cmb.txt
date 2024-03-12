@@ -1,15 +1,16 @@
 @name FBD Fender Bender Defender CMB
-@inputs Enable Active MPH
+@inputs Enable Active MPH 
 @outputs EmBrake CycleTime TruckCount Running Analyzing RTD_Counter Enable_True PCS_Open
 @persist Trucks:array TruckTypes:array W:entity O:entity AUTOPARENT SpeedThreshold Index RTD FreezeOnDerail Running Initialized Interval Derail MarkerColor:vector
-@persist TruckModels:array SpeedQ Paths:table Analyzing TC Consist:array AI LazyMode Disabled
+@persist TruckModels:array SpeedQ Paths:table Analyzing TC Consist:array AI LazyMode Disabled CurName:array Gau NameQ RefreshKey:string
 @persist Sound:string [R1E R1P R1A]:array [R2E R2P R2A]:array [R3E R3P R3A]:array [R4E R4P R4A]:array [R5E R5P R5A]:array [R6E R6P R6A]:array [R7E R7P R7A]:array [R8E R8P R8A]:array [R9E R9P R9A]:array [R10E R10P R10A]:array RTD_Counter RTD_Interval Hitbox Gauge
 @trigger Enable Active
 @model models/Items/combine_rifle_ammo01.mdl
-if(first()|duped()){
+if(first()|dupefinished()){
     
     local Version = "V3 modified by RodrigosMOD"
     #[
+    
     
     Welcome to Magnum's Fender Bender Defender (Also known as FBD)!
     "Stops accidents dead in their tracks!"
@@ -40,11 +41,25 @@ if(first()|duped()){
     Another Note by RodrigosMOD:
     helooo!!! this version of FBD has some new features, up to 10 different .rerail positions and an unfreeze command so you don't need to get out of the engine while running
     
+    Features:
+    Now the e2 can detect by itself what prop is parented to, that means... YOU DON'T NEED TO FUCKING RESPAWN THE GOD DAMN ENGINE TO MAKE FBD WORK. YAYYYYYYY!!!!!!!!!
+    
+    Wiring:
+    Enable goes to a toggleable button, this will turn on the FBD
+    Active goes to Active in the pod controller, this makes the FBD to update and start to save positions (IMPORTANT NOTE: please make sure to update this by getting in and out of the chair so the FBD can start to save positions)
+    
+    
     List of commands:
     
     .r (rerail). For example .r1, .r2, .r3, .r4 until you reach .r10 which is the last rerail command (i switched from .rerail to .r so its faster for rerailing and can prevent some accidents)
     .u (unfreeze). This command just unfreeze the entire consist, nothing special
-   
+    
+    Future uptdates or idk:
+    Remove useless code and features that a normal person doesn't uses
+    Optimize a bit more
+    Switching gauges by chat command (same for hitbox)
+    and idk what else, but this works cool
+  
     this is the end, with this e2 you can live, love and lie
     Goodbye and enjoy.
     
@@ -52,12 +67,13 @@ if(first()|duped()){
     
     Gauge = 27 #This is the gauge where FBD will work, 27 is for TP3 and 38 for PHX
     Hitbox = 1 #This is the width hitbox derailment detection area, default is 1 but in some axles or bogies you'll need to use a higher value like 1.7 (in my case with double_30 axles)
-    Sound = "zombie_tunnel.crash" #This is the sound that plays when the E2 detects a derailment
+    Sound = "ambient/machines/thumper_top.wav" #This is the sound that plays when the E2 detects a derailment
+    RefreshKey = "j"
     
     RTD = 1   #Enables Red Tape Defender (RTD) Recording. At any time, you can type ".rerail" in chat and it will place your entire train back on the rails!
     FreezeOnDerail = 0  #"Traditional" FBD functionality. When it detects a derailment, it will freeze the entire train.
     MarkerColor = vec(255,187,0) #Whichever truck triggered FBD will be highlighted with this color.
-    SpeedThreshold = 15   #FBD will re-examine all trucks when you accelerate past this speed.
+    SpeedThreshold = 5   #FBD will re-examine all trucks when you accelerate past this speed.
     
     Interval = 50   #Derailment Check Interval, in ms. 50ms means 20 trucks per second (10 cars per second). You should probably leave it at 50.
     RTD_Interval = 10 #Time in seconds between Red Tape snapshots.
@@ -78,7 +94,6 @@ if(first()|duped()){
     
     )
     signalSetGroup("FBD")
-    runOnSignal("Disable",0,LazyMode)
     
     
     function void getTrucks(Base:entity){ #Truck Identification
@@ -129,9 +144,7 @@ if(first()|duped()){
         W:propFreeze(0)
         for(N=1,Constrained:count()){
             Constrained[N,entity]:propFreeze(0)
-        }
-        
-        
+        }        
         return void
     }
     
@@ -196,6 +209,7 @@ if(first()|duped()){
     local E = entity()
     O = owner()
     runOnChat(1)
+    runOnKeys(O,1)
     Index = 1
     Running = 0
     Derail = 0
@@ -211,136 +225,64 @@ if(first()|duped()){
     
     Disabled = 0
     
-    if(first()){
-        print("[FBD] Welcome to Magnum's Fender Bender Defender!\nPlease read the instructions before proceeding.\nIf the E2 doesn't detects your engine or spams truck mismatch, respawn the engine with the updated E2")
-        if(AUTOPARENT){
-            #E:setMaterial("models/effects/vol_light001")
-            local Welded = E:isWeldedTo()
-            if(Welded:isValidPhysics()){
-                E:parentTo(Welded)
-                W = Welded
-                #ifdef entity:constraintBreak(entity)
-                    E:constraintBreak(Welded)
-                #endif
-                    
-            }else{
-                print("[FBD] Please attach to the carbody/baseplate of the locomotive!")
-                exit()
-            }
     
-        }else{
-            W = E:isWeldedTo()
-            if(!W:isValidPhysics()){
-                print("[FBD] Please attach to the carbody/baseplate of the locomotive!")
-                exit()
-            }
-        }
-        if(LazyMode){
-            findIncludePlayerProps(O)
-            findInSphere(E:pos(),256)
-            findSortByDistance(E:pos())
-            local FR = findToArray()
-            local PC = noentity()
-            local RLCPT = noentity()
-            for(LN=1,FR:count()){
-                local V = FR[LN,entity]
-                local Class = V:type()
-                if(Class=="gmod_wire_pod"){
-                    PC = V
-                }elseif(Class=="gmod_wire_expression2"){
-                    local Wirelink = V:wirelink()
-                    if(Wirelink["RLCPT",entity]){
-                        RLCPT = V
-                    }
-                }
-            }
-            if(PC){
-                print("[FBD] Pod Controller Found: " + PC:id())
-            }else{
-                print("[FBD] ERROR! Could not find Pod Controller!")
-            }
-            if(RLCPT){
-                print("[FBD] RLC PT found: " + RLCPT:id())
-            }else{
-                print("[FBD] ERROR! Could not find RLC PT Chip!")
-            }
-            if(PC & RLCPT){
-                E:createWire(RLCPT,"Enable","On",0,vec(),"cable/cable2")
-                E:createWire(RLCPT,"MPH","MPH",0,vec(),"cable/cable2")
-                E:createWire(PC,"Active","Active",0,vec(),"cable/cable2")
-                RLCPT:createWire(E,"EmBrake","EmBrake",0,vec(),"cable/cable2")
-            }
+    if(first()|duped()){
+       print("[FBD] Welcome to the modified Magnum's Fender Bender Defender!\nIf this is your first time using this E2, PLEASE read the DESC.")
+    }
             
+            
+    if(first()|dupefinished()){
+        
+        if(Gauge== 27){ 
+            Type = "RSG"
+            
+        }elseif(Gauge == 38){
+            Type = "PHX"
+      
         }
-    }
-    if(!FreezeOnDerail & !RTD){
-        print("[FBD] WARNING! You have disabled Both FreezeOnDerail and Red Tape Defender!\nFBD May be ineffective at preventing accidents!")
-    }
-    setName("FBD Fender Bender Defender " + Version)
-    
-    
-}elseif(dupefinished()){
+        
+        hint("[FBD]: Current Gauge: " + Type, 7)
+        setName("Combine Fender Bender Defender \nCurrent Gauge = "+Type+"")
+   
+
+
     local E = entity()
     if(E:parent():isValidPhysics()){
         W = E:parent()
     }elseif(E:isWeldedTo():isValidPhysics()){
         W = E:isWeldedTo()
+        
     }else{
-        print("[FBD] Please attach to the carbody/baseplate of the locomotive!")
+        print("[FBD] Engine is not being detected by the E2!\nMake sure that the e2 is parented or constrained to the Base of the engine, if its a double base engine, parent it to the second bases, not the main one!")
         exit()
     }
-    if(LazyMode){
-        findIncludePlayerProps(O)
-        findInSphere(E:pos(),128)
-        local FR = findToArray()
-        local PC = noentity()
-        local RLCPT = noentity()
-        foreach(K,V:entity=FR){
-            local Class = V:type()
-            if(Class=="gmod_wire_pod"){
-                PC = V
-            }elseif(Class=="gmod_wire_expression2"){
-                local Name = V:getName()
-                if(Name:find("RLC Platinum")){
-                    RLCPT = V
-                }
-            }
-        }
-        if(!PC){
-            print("[FBD] ERROR! Could not find Pod Controller!")
-        }
-        if(!RLCPT){
-            print("[FBD] ERROR! Could not find RLC PT Chip!")
-        }
-        if(PC & RLCPT){
-            E:createWire(RLCPT,"Enable","On",0,vec(),"cable/cable2")
-            E:createWire(RLCPT,"MPH","MPH",0,vec(),"cable/cable2")
-            E:createWire(PC,"Active","Active",0,vec(),"cable/cable2")
-            RLCPT:createWire(E,"EmBrake","EmBrake",0,vec(),"cable/cable2")
-        }
-        
-    }
+}    
 }
 
-if(signalClk()){
-    Disabled = 1
+if(spawnClk()){
+    Disabled = 0
     #print("Chip Disabled!")
 }elseif(Enable & Active & ~Active){
     Disabled = 0
 }
 
-Enable_True = Enable & !Disabled
-
+Enable_True = Enable
 
 if(Enable_True){
+    
+    if(O:keyPressed(RefreshKey) & (keyClkPressed()==RefreshKey)){
+        refresh()
+        O:soundPlay(0,4,"Buttons.snd7")
+         hint("[FBD] Refreshed.",5)
+         hideChat(1)
+    }
+        
+        
     if(Active & ~Active){
         Initialized = 1
         #print("Chip Disabling!")
         refresh()
-        if(LazyMode){
-            signalSend("Disable",0)
-        }
-        
+  
         if(RTD){
             rtd_save()
             
@@ -356,13 +298,13 @@ if(Enable_True){
             local LoPoint = Specimen:boxMin()*(Type ? vec(1,0,1) : vec(0,1,(Hitbox))) 
             if(Type){
                 #GSG
-                Corner1 = LoPoint + vec(0,(Gauge)*-1,0)
-                Corner2 = LoPoint*vec(-1,0,1) + vec(0,(Gauge),0)
+                Corner1 = LoPoint + vec(0,(Gauge)*-1,1)
+                Corner2 = LoPoint*vec(-1,0,1) + vec(0,(Gauge),1)
                 Dir = Specimen:forward() + Specimen:right()
             }else{
                 #Mag
-                Corner1 = LoPoint + vec((Gauge),0,0)
-                Corner2 = LoPoint*vec(-1,0,1) + vec((Gauge)*-1,0,0)
+                Corner1 = LoPoint + vec((Gauge),0,1)
+                Corner2 = LoPoint*vec(-1,0,1) + vec((Gauge)*-1,0,1)
                 Dir = Specimen:forward() - Specimen:right()
             }
             rangerFilter(Specimen)
@@ -373,10 +315,9 @@ if(Enable_True){
             
             if(Derail){ #Derailment Found!
                 Running = 0
-                
                 EmBrake = 1
                 PCS_Open = 1
-                print("[FBD] Derailment Detected at " + toString(round(MPH,1)) + " MPH!")
+                hint("[FBD] Derailment Detected at " + toString(round(MPH,1)) + " MPH!",10)
                 O:soundPlay(0,5,(Sound))
                 holoCreate(0,Specimen:pos(),vec(1.125),Specimen:angles(),MarkerColor,Specimen:model())
                 holoParent(0,Specimen)
@@ -408,7 +349,7 @@ if(Enable_True){
             }
             
         }else{
-            print("[FBD] Truck Mismatch Detected (Index " + Index:toString() + ")! Reloading...")
+            hint("[FBD] Truck Mismatch Detected (Index " + Index:toString() + ")!",1)
             refresh()
         }
         
@@ -460,7 +401,7 @@ if(Enable_True){
         }
         timer("speedtest",1000)
     }elseif(clk("fenderbender")){
-        O:soundPlay(1,3,"")
+        O:soundPlay(1,5,"")
         EmBrake = 0
     }elseif(chatClk(O)){
         LS = O:lastSaid()
@@ -474,24 +415,16 @@ if(Enable_True){
             if(RTD){
                 rtd_save()
                 
-            print("[FBD] Initializing, Refreshing, and Running.")
+            hint("[FBD] Refreshed.",5)
             hideChat(1)
             }
             
     }elseif(LS==".u") {
-            hideChat(1)
-            if(RTD){
-                unfreezeAll()
-                for(N=1,R1E:count()){
-                    local Ent = R1E[N,entity]
-                    if(Ent:isValidPhysics()){
-            }
-         }
+          
+         unfreezeAll()
          O:soundPlay(0,4,"Buttons.snd28")
-         print("[FBD] Train has been unfreezed.")
+         hint("[FBD] Train has been unfreezed.",5)
          hideChat(1)
-        
-            }
                  
             #SECTION FOR .RERAIL (.r) COMMANDS #######################################################################################
             
@@ -703,4 +636,3 @@ if(Enable_True){
     Running = 0
     stopAllTimers()
 }
-
