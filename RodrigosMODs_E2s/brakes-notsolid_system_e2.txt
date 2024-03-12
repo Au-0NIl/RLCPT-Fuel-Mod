@@ -1,7 +1,7 @@
 @name Brakes-NotSolid system E2
 @inputs Brake NotSolid Base:entity 
 @outputs 
-@persist Base:entity Material:string
+@persist Base:entity [BrakeMaterial Supericer BrakeEngage BrakeRelease]:string
 @trigger Brake NotSolid
 
   # Hello! welcome to the manual handbrakes/embrakes and not solid system E2! This E2 chip was made by RodrigosMOD and with the help of NIl
@@ -13,57 +13,63 @@
 
   # Both systems works with any kind of consist since it detects every constrained entity from the Baseplate (Base) and applies the material or the not solid on everything
 
-  # Inputs are self explanatory, Base:entity to the baseplate or train model base, Brake to a pod controller input (for example: Space) and NotSolid to a toggleable button or Keyinput
+  # Inputs are self explanatory, Base:entity to the baseplate or train model base, Superice to a pod controller input (for example: Space) and NotSolid to a toggleable button or Keyinput
 
   # I'll probably add more features on this, but no ideas for now, also i want to make this E2 most optimized possible. Have fun 
  
   #Here you can change how the brakes and supericer behaves, here's a link with every physical material that exists on source engine:
   # https://developer.valvesoftware.com/wiki/Material_surface_properties
 
+if(first()|dupefinished()){
    #Material:
    BrakeMaterial = "canister" #Here goes the brake material
-   Supericer = "gmod_ice" #And here goes the material that removes the friction of the train (you can use gmod_ice or friction_00 too)
+   Supericer = "friction_00" #And here goes the material that removes the friction of the train (you can use gmod_ice or friction_00 too)
 
    #Sounds:
-   BrakeEngage = "ep2_outland_11.leverdoor_open" #Sounds that plays when you press the brake input
-   BrakeRelease = "d3_breen.digger_stop1" #Sound that plays after releasing that brake input (also this one is used for the not solid system when enables and disables)
+   BrakeEngage = "ep2_outland_11.leverdoor_close" #Sounds that plays when you press the brake input
+   BrakeRelease = "ep2_outland_11.leverdoor_latch" #Sound that plays after releasing that brake input (also this one is used for the not solid system when enables and disables)
 
-   
-   ############################################################
+   ################### FUNCTION MODULES ###################
 
 
-   Base:isConstrainedTo()
-   Ents = Base:getConstraints()
-
-    ################### FUNCTION MODULES ###################
-    function void smbrake(Material:string) {
+}
+   function void brake(Material:string) {
+        Base:isConstrainedTo()
+        Ents = Base:getConstraints()
         Base:propPhysicalMaterial(Material)
         for(N=1,Ents:count()){
             Ents[N,entity]:propPhysicalMaterial(Material)
         }
     }
-  
+
     function void notsolid(Num) { 
+        Base:isConstrainedTo()
+        Ents = Base:getConstraints()
         Base:propNotSolid(Num) 
         for(N=1,Ents:count()){ 
         Ents[N,entity]:propNotSolid(Num) 
         Ents[N,entity]:propFreeze(Num) } 
-    } 
-
-    ################### FUNCTIONS, COMMANDS and stuff ###################
+    }
     
-    if(Brake==1){
-     smbrake(BrakeMaterial) 
+    if(Brake){
+     brake(BrakeMaterial) 
      Base:soundPlay(2,0,BrakeEngage)
-
-    }else{
-     smbrake(Supericer)
-     Base:soundPlay(2,3,BrakeRelease)     
    
+    }elseif(~Brake){
+     brake(Supericer)
+     Base:soundPlay(2,3,BrakeRelease)      
    }
-
-    if(NotSolid==1){
+   
+    if(NotSolid){
      notsolid(1)
-    }else{
-     notsolid(0)
-}
+     Base:soundPlay(2,1.2,"ambient/alarms/combine_bank_alarm_loop1.wav")
+     Base:soundPlay(3,0,"ambient/machines/floodgate_stop1.wav")
+     soundLevel(2,90)
+     soundLevel(3,90)
+    
+   }
+    if(~NotSolid){
+     Base:soundPlay(3,0,"ambient/machines/floodgate_stop1.wav")
+     soundLevel(3,90)
+    notsolid(0)
+   }
