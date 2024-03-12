@@ -1,0 +1,175 @@
+@name Train Indicator
+@inputs On [LastSignalAspect NextSignalAspect]:string LIndicator:entity NIndicator:entity Reset
+@outputs LRGB:vector NRGB:vector Active
+@persist Clear:string Approach:string Stop:string Restricting:string
+@trigger 
+
+
+if(first()|dupefinished()){
+#xD
+
+#[
+
+List of Signals Output (TrakPak3 box stuff idk)
+
+1. Clear: "B-281 - CLEAR" | simple green signal
+2. Stop: "B-292 - STOP" | Simple Red signal
+3. Approach: "B-285 - APPROACH" | Simple Yellow signal
+4. Lunar; "B-290 - RESTRICTING" | Simple white Signal
+
+
+
+Another weird E2 that i made, this can tell you if there's an engine next signal or what condition was the signal you passed.
+
+Before starting wiring, spawn the Trakpak3 Cab signal box searching it on the wiremod tab, then spawn 2 wire pixels and change their material
+to a shiny or that makes the colors looks stronger with the darkness. example, models/props_gulch/gulch_crystal_white
+
+In one of the pixels, wire RGB [VECTOR] to LRGB (LastSignalAspectRGB) and in the other pixel, wire the RGB to the e2 again but to NRGB (NextSignalAspectRGB)
+this is for changing the color of the pixels to red, yellow, green and so on
+
+Also wire the Enable from the TP3 cab signal box to the same button that enables this E2
+
+How 2 wire E2:
+
+1. On goes to the thing to turn on the E2
+2. LastSignalAspect and NextSignalAspect goes to the TP3 Cab Signal box
+3. Lindicator goes to the LastIndicator, this goes to any prop that will act as the thing that will glow and change color depending on the aspect.
+4. Nindicator goes to the NextIndicator, same as before but this tells the nex aspect.
+5. Reset (optional) this uhhhh resets???? probably??? idk 
+
+and nothing else i think fof, any question, contact RodrigosMOD on Discord or through steam
+
+
+
+]#
+
+ Clear = "Buttons.snd17"
+ Approach = "Buttons.snd41"
+ Stop = "Buttons.snd19"
+ Restricting = "ambient/alarms/warningbell1.wav"
+
+ OFFSound = "Buttons.snd43"
+
+ soundLevel(1,80)
+ soundLevel(2,80)
+ soundLevel(3,80)
+ soundLevel(4,80)
+ soundPitch(2,80)
+ soundPitch(4,80)
+
+ spriteEnable(1,1)
+ spriteSpawn(2,"sprites/light_glow02")
+ spriteSetParent(2,LIndicator)
+ spriteSetPos(2,LIndicator:toWorld(vec(0,0,0)))
+ spriteSetScale(2,0.1)
+
+ spriteEnable(3,1)
+ spriteSpawn(3,"sprites/light_glow02")
+ spriteSetParent(3,NIndicator)
+ spriteSetPos(3,NIndicator:toWorld(vec(0,0,0)))
+ spriteSetScale(3,0.1)
+
+}
+  if(On>0){
+
+    Active = 1
+    LRGB = vec(0,255,0)  
+    spriteSetColor(2,vec(0,255,0))
+    spriteSetAlpha(2,255)
+    LIndicator:soundPlay(1,0,Clear)
+
+    NRGB = vec(0,255,0)
+    spriteSetColor(3,vec(0,255,0))  
+    spriteSetAlpha(3,255)
+    NIndicator:soundPlay(3,0,Clear)
+    
+    # GREEN
+    if(LastSignalAspect:sub(1,5) == "B-281"){      
+    LRGB = vec(0,255,0)  
+    spriteSetColor(2,vec(0,255,0))
+    spriteSetAlpha(2,255)
+    LIndicator:soundPlay(1,0,Clear)
+    }
+  
+    # YELLOW
+    if(LastSignalAspect:sub(1,5) == "B-285"|LastSignalAspect:sub(1,5) == "B-286"){       
+    LRGB = vec(255,140,0)
+    spriteSetColor(2,vec(255,255,0))
+    spriteSetAlpha(2,255)
+    LIndicator:soundPlay(1,0,Approach)    
+    }
+
+    # RED
+    if(LastSignalAspect:sub(1,5) == "B-292"){
+    LRGB = vec(255,0,0)
+    spriteSetColor(2,vec(255,0,0))
+    spriteSetAlpha(2,255)
+    LIndicator:soundPlay(1,0,Stop) 
+    
+    # WHITE (Lunar)
+    if(LastSignalAspect:sub(1,5) == "B-290"){       
+    LRGB = vec(255,255,255)  
+    spriteSetColor(2,vec(255,255,255))
+    spriteSetAlpha(2,255)
+    LIndicator:soundPlay(1,0,Restricting)
+    }   
+   }
+    
+    #############################
+    
+    # GREEN
+    if(NextSignalAspect:sub(1,5) == "B-281"){        
+    NRGB = vec(0,255,0)
+    spriteSetColor(3,vec(0,255,0))  
+    spriteSetAlpha(3,255)
+    NIndicator:soundPlay(3,0,Clear)
+    }
+  
+    # YELLOW
+    if(NextSignalAspect:sub(1,5) == "B-285"|LastSignalAspect:sub(1,5) == "B-286"){        
+    NRGB = vec(255,140,0)
+    spriteSetColor(3,vec(255,255,0))
+    spriteSetAlpha(3,255)
+    NIndicator:soundPlay(3,0,Approach)    
+    }
+ 
+    # RED
+    if(NextSignalAspect:sub(1,5) == "B-292"){       
+    NRGB = vec(255,0,0)
+    spriteSetColor(3,vec(255,0,0))
+    spriteSetAlpha(3,255)
+    NIndicator:soundPlay(3,0,Stop)    
+    }
+    
+    # WHITE (Lunar)
+    if(NextSignalAspect:sub(1,5) == "B-290"){        
+    NRGB = vec(255,255,255)  
+    spriteSetColor(3,vec(255,255,255))
+    spriteSetAlpha(3,255)
+    NIndicator:soundPlay(1,0,Restricting)
+    }
+    
+    if(Reset>0){
+    LRGB = vec(0,255,0)  
+    spriteSetColor(2,vec(0,255,0))
+    spriteSetAlpha(2,255)
+    LIndicator:soundPlay(1,0,Clear)
+    
+    NRGB = vec(0,255,0)
+    spriteSetColor(3,vec(0,255,0))  
+    spriteSetAlpha(3,255)
+    NIndicator:soundPlay(3,0,Clear)
+      
+    }
+   }
+
+    if(On<1){
+    
+    Active = 0 
+    LRGB = vec(0,0,0)
+    NRGB = vec(0,0,0)
+    spriteSetAlpha(2,0)
+    spriteSetAlpha(3,0)
+   
+   } 
+
