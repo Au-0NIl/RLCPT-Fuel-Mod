@@ -1,7 +1,7 @@
 # RLCPT-Fuel-Mod
 
 > **This project is no longer maintained.**  
-> It was a fun little experiment, and I'm glad I made it, even if I didn’t fully understand how fuel consumption actually works
+> It was a fun little experiment, and I'm glad I made it, even if I didn’t fully understand how fuel consumption actually works.
 > I’m not actively working on this anymore, but I’m leaving it up in case anyone finds it interesting or wants to build on it.
 
 ---
